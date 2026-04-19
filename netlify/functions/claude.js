@@ -6,52 +6,65 @@ exports.handler = async function(event) {
     'Content-Type': 'application/json'
   };
 
-  if (event.httpMethod === 'OPTIONS') {
-    return {
-      statusCode: 200,
-      headers,
-      body: ''
-    };
-  }
-
-  if (event.httpMethod !== 'POST') {
-    return {
-      statusCode: 405,
-      headers,
-      body: JSON.stringify({ error: 'Method not allowed' })
-    };
-  }
+  if (event.httpMethod === 'OPTIONS') return { statusCode: 200, headers, body: '' };
 
   try {
-    if (!process.env.CLAUDE_API_KEY) {
-      return {
-        statusCode: 500,
-        headers,
-        body: JSON.stringify({ error: 'API key not configured' })
-      };
+    // Prioridad a la variable de entorno de Netlify por seguridad
+    const API_KEY = process.env.GEMINI_API_KEY || "AIzaSyD_lO2vA5tz3QY0eWqn7Jh7RSUk66YJOkM";
+    const body = JSON.parse(event.body || '{}');
+    const messages = body.messages || [];
+    const lastMessage = messages[messages.length - 1];
+
+    if (!lastMessage) throw new Error("No hay mensajes en la solicitud");
+
+    // Preparar contenido para la API REST de Gemini
+    let contents = messages.map(m => ({
+      role: m.role === 'assistant' ? 'model' : 'user',
+      parts: [{ text: typeof m.content === 'string' ? m.content : (m.content.find(p => p.type === 'text')?.text || "Analiza esto") }]
+    }));
+
+    // Si hay imagen (formato multimodal), Gemini requiere un formato especial
+    if (Array.isArray(lastMessage.content)) {
+      const imgPart = lastMessage.content.find(p => p.type === 'image');
+      const textPart = lastMessage.content.find(p => p.type === 'text');
+      
+      if (imgPart && imgPart.source && imgPart.source.data) {
+        contents[contents.length - 1].parts = [
+          { text: textPart ? textPart.text : "Analiza esta imagen" },
+          { inline_data: { mime_type: "image/jpeg", data: imgPart.source.data } }
+        ];
+      }
     }
 
-    const body = JSON.parse(event.body || '{}');
-
-    const response = await fetch('https://api.anthropic.com/v1/messages', {
+    const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${API_KEY}`;
+    
+    const response = await fetch(apiUrl, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-api-key': process.env.CLAUDE_API_KEY,
-        'anthropic-version': '2023-06-01'
-      },
-      body: JSON.stringify(body)
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ 
+        contents,
+        systemInstruction: { parts: [{ text: body.system || "Eres EcoBot, un asistente experto en ecología." }] }
+      })
     });
 
     const data = await response.json();
+    
+    if (data.error) {
+      throw new Error(data.error.message || "Error en la API de Gemini");
+    }
+
+    const text = data.candidates?.[0]?.content?.parts?.[0]?.text || "Lo siento, no pude generar una respuesta.";
 
     return {
-      statusCode: response.status,
+      statusCode: 200,
       headers,
-      body: JSON.stringify(data)
+      body: JSON.stringify({
+        content: [{ type: 'text', text: text }]
+      })
     };
 
   } catch(e) {
+    console.error("Error en función EcoBot:", e);
     return {
       statusCode: 500,
       headers,

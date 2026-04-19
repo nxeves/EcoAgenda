@@ -509,15 +509,16 @@
       toast('🤖 EcoBot analizando el horario...','info');
       document.getElementById('scan-result').style.display='block';
 
-      // Call Claude API to analyze the schedule image
+      // Call Gemini API to analyze the schedule image
       const imageData = canvas.toDataURL('image/jpeg').split(',')[1];
       try {
-        const resp = await fetch('https://api.anthropic.com/v1/messages', {
+        const resp = await fetch('/.netlify/functions/claude', {
           method:'POST',
           headers:{'Content-Type':'application/json'},
           body:JSON.stringify({
-            model:'claude-sonnet-4-20250514',
+            model:'gemini-1.5-flash',
             max_tokens:1000,
+            system: 'Eres un experto analizando horarios escolares. Extrae la información en una tabla clara.',
             messages:[{
               role:'user',
               content:[

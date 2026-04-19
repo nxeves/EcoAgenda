@@ -300,11 +300,16 @@
 
   <script type="module">
     import { initParticles, toast } from '../js/utils.js';
-    import { auth } from '../js/firebase.js';
+    import { auth, db } from '../js/firebase.js';
     import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+    import { doc, updateDoc, increment } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
     initParticles();
-    onAuthStateChanged(auth, u => { if(!u&&!sessionStorage.getItem('eco_demo')) location.href='../index.html'; });
+    let currentUID = null;
+    onAuthStateChanged(auth, u => { 
+      if(!u&&!sessionStorage.getItem('eco_demo')) location.href='../index.html'; 
+      if(u) currentUID = u.uid;
+    });
 
     let msgCount=0, ptsEarned=0;
     let currentMode='eco';
@@ -388,12 +393,9 @@ Responde en español.`
       try {
         const resp = await fetch('/.netlify/functions/claude',{
           method:'POST',
-          headers:{
-  'Content-Type':'application/json',
-  
-},
+          headers:{ 'Content-Type':'application/json' },
           body:JSON.stringify({
-            model:'claude-sonnet-4-20250514',
+            model:'gemini-1.5-flash',
             max_tokens:1000,
             system: SYSTEM_PROMPTS[currentMode],
             messages: conversationHistory
@@ -413,6 +415,11 @@ Responde en español.`
         // Give points for using EcoBot
         ptsEarned += 2;
         document.getElementById('pts-earned').textContent = '+'+ptsEarned;
+
+        // Save to Firebase if logged in
+        if (currentUID) {
+          updateDoc(doc(db, 'users', currentUID), { puntos: increment(2) }).catch(() => {});
+        }
 
       } catch(e) {
         hideTyping();

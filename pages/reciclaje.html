@@ -155,11 +155,16 @@
 
   <script type="module">
     import { initParticles, toast } from '../js/utils.js';
-    import { auth } from '../js/firebase.js';
+    import { auth, db } from '../js/firebase.js';
     import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+    import { doc, updateDoc, increment } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
     initParticles();
-    onAuthStateChanged(auth, u => { if(!u&&!sessionStorage.getItem('eco_demo')) location.href='../index.html'; });
+    let currentUID = null;
+    onAuthStateChanged(auth, u => { 
+      if(!u&&!sessionStorage.getItem('eco_demo')) location.href='../index.html'; 
+      if(u) currentUID = u.uid;
+    });
 
     const ITEMS = [
       { name:'Botella PET',    bin:'plastico', icon:'🥤', desc:'Aplasta antes de tirar. Sin tapas.' },
@@ -238,6 +243,11 @@
       document.getElementById('res-steps').innerHTML = (STEPS[item.bin]||[]).map(s=>`<li>${s}</li>`).join('');
       document.getElementById('search-result').classList.add('visible');
       document.getElementById('search-result').scrollIntoView({behavior:'smooth',block:'start'});
+
+      // Reward for searching
+      if (currentUID) {
+        updateDoc(doc(db, 'users', currentUID), { puntos: increment(1) }).catch(() => {});
+      }
     };
 
     window.searchObject = async () => {
@@ -251,16 +261,18 @@
       // Otherwise ask EcoBot
       toast('🤖 Consultando con EcoBot...','info');
       try {
-        const resp = await fetch('https://api.anthropic.com/v1/messages',{
+        const resp = await fetch('/.netlify/functions/claude',{
           method:'POST',
           headers:{'Content-Type':'application/json'},
           body:JSON.stringify({
-            model:'claude-sonnet-4-20250514', max_tokens:500,
-            messages:[{ role:'user', content:`¿En qué contenedor se recicla: "${q}"? Responde con: tipo de contenedor, color, pasos breves para prepararlo. Sé conciso y en español.` }]
+            model:'gemini-1.5-flash',
+            max_tokens:500,
+            system: 'Eres un experto en reciclaje. Responde qué contenedor se usa, el color y pasos breves.',
+            messages:[{ role:'user', content:`¿En qué contenedor se recicla: "${q}"?` }]
           })
         });
         const data = await resp.json();
-        const text = data.content?.[0]?.text || 'No se encontró información.';
+        const text = data.candidates?.[0]?.content?.parts?.[0]?.text || data.content?.[0]?.text || 'No se encontró información.';
         document.getElementById('res-icon').textContent = '♻️';
         document.getElementById('res-title').textContent = q;
         document.getElementById('res-bin').textContent = 'Resultado de EcoBot';
