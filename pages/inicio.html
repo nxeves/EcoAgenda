@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>EcoAgenda — Inicio</title>
+  <link rel="stylesheet" href="../css/global.css" />
+  <style>
+    .hero-section {
+      text-align:center; padding:48px 0 36px;
+    }
+    .hero-greeting {
+      font-family:var(--font-display); font-size:2rem; font-weight:900;
+      margin-bottom:6px;
+    }
+    .hero-greeting span { color:var(--green-300); }
+    .hero-sub { color:var(--text-muted); font-size:0.95rem; margin-bottom:28px; }
+
+    .stats-row {
+      display:grid; grid-template-columns:repeat(4,1fr); gap:16px; margin-bottom:32px;
+    }
+    .stat-card {
+      background:var(--bg-card); border:1px solid var(--border-soft);
+      border-radius:var(--r-lg); padding:20px; text-align:center;
+      transition:all var(--t-mid);
+    }
+    .stat-card:hover { border-color:var(--border-mid); transform:translateY(-2px); }
+    .stat-icon { font-size:1.8rem; margin-bottom:8px; display:block; }
+    .stat-val {
+      font-family:var(--font-display); font-size:1.6rem; font-weight:900;
+      color:var(--green-300);
+    }
+    .stat-lbl { font-size:0.72rem; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.5px; }
+
+    .modules-grid {
+      display:grid; grid-template-columns:repeat(4,1fr); gap:16px;
+      margin-bottom:32px;
+    }
+    .module-card {
+      background:var(--bg-card); border:1px solid var(--border-soft);
+      border-radius:var(--r-lg); padding:24px 16px;
+      text-align:center; cursor:pointer; text-decoration:none;
+      color:inherit; transition:all var(--t-mid);
+      display:flex; flex-direction:column; align-items:center; gap:10px;
+    }
+    .module-card:hover {
+      border-color:var(--border-bright); transform:translateY(-4px);
+      box-shadow:var(--shadow-glow);
+    }
+    .module-icon {
+      font-size:2.4rem;
+      filter:drop-shadow(0 0 10px rgba(34,197,94,0.3));
+    }
+    .module-name {
+      font-family:var(--font-display); font-weight:700; font-size:0.9rem;
+    }
+    .module-desc { font-size:0.72rem; color:var(--text-muted); }
+
+    .dashboard-bottom { display:grid; grid-template-columns:1fr 1fr; gap:20px; }
+
+    .section-hd {
+      display:flex; align-items:center; justify-content:space-between; margin-bottom:16px;
+    }
+    .section-hd h2 { font-family:var(--font-display); font-weight:800; font-size:1.1rem; }
+
+    .today-tasks { display:flex; flex-direction:column; gap:10px; }
+
+    .challenge-mini {
+      background:var(--bg-card); border:1px solid var(--border-soft);
+      border-radius:var(--r-md); padding:16px;
+    }
+    .challenge-mini h4 { font-size:0.85rem; font-weight:700; margin-bottom:6px; }
+    .prog-bar { height:6px; background:var(--bg-elevated); border-radius:3px; overflow:hidden; margin-top:8px; }
+    .prog-fill { height:100%; background:linear-gradient(90deg,var(--green-600),var(--accent-lime)); border-radius:3px; }
+
+    @media(max-width:900px) {
+      .modules-grid { grid-template-columns:repeat(2,1fr); }
+      .stats-row    { grid-template-columns:repeat(2,1fr); }
+      .dashboard-bottom { grid-template-columns:1fr; }
+    }
+  </style>
+</head>
+<body>
+  <canvas id="bg-canvas"></canvas>
+  <div id="toast-container"></div>
+
+  <!-- NAV -->
+  <nav class="eco-nav">
+    <div class="container">
+      <a href="inicio.html" class="nav-logo">
+        <div class="logo-dot"></div>EcoAgenda
+      </a>
+      <ul class="nav-links">
+        <li><a href="inicio.html" class="active"><span class="nav-icon">🏠</span>Inicio</a></li>
+        <li><a href="agenda.html"><span class="nav-icon">📝</span>Agenda</a></li>
+        <li><a href="reciclaje.html"><span class="nav-icon">♻️</span>Recicla</a></li>
+        <li><a href="chat.html"><span class="nav-icon">💬</span>Chat</a></li>
+        <li><a href="juego.html"><span class="nav-icon">🎮</span>Juego</a></li>
+        <li><a href="ranking.html"><span class="nav-icon">🏆</span>Ranking</a></li>
+        <li><a href="ecobot.html"><span class="nav-icon">🤖</span>EcoBot</a></li>
+        <li><a href="perfil.html"><span class="nav-icon">👤</span>Perfil</a></li>
+      </ul>
+      <div class="nav-user">
+        <img id="nav-avatar" src="https://ui-avatars.com/api/?name=Eco&background=0b5022&color=86efac&bold=true" class="nav-avatar" onclick="location.href='perfil.html'" />
+      </div>
+    </div>
+  </nav>
+
+  <div class="page-wrap main-content">
+    <div class="container">
+
+      <!-- Hero -->
+      <div class="hero-section stagger">
+        <h1 class="hero-greeting">¡Hola, <span id="user-name">EcoHéroe</span>! 🌿</h1>
+        <p class="hero-sub">Bienvenido de vuelta — hoy es un buen día para cuidar el planeta</p>
+        <div id="user-rank-badge"></div>
+      </div>
+
+      <!-- Stats row -->
+      <div class="stats-row stagger">
+        <div class="stat-card">
+          <span class="stat-icon">⭐</span>
+          <div class="stat-val" id="stat-puntos">0</div>
+          <div class="stat-lbl">Puntos Eco</div>
+        </div>
+        <div class="stat-card">
+          <span class="stat-icon">✅</span>
+          <div class="stat-val" id="stat-tareas">0</div>
+          <div class="stat-lbl">Tareas hoy</div>
+        </div>
+        <div class="stat-card">
+          <span class="stat-icon">♻️</span>
+          <div class="stat-val" id="stat-reciclaje">0</div>
+          <div class="stat-lbl">Objetos reciclados</div>
+        </div>
+        <div class="stat-card">
+          <span class="stat-icon">🔥</span>
+          <div class="stat-val" id="stat-racha">1</div>
+          <div class="stat-lbl">Días seguidos</div>
+        </div>
+      </div>
+
+      <!-- Modules -->
+      <div class="section-hd">
+        <h2>Módulos</h2>
+        <span class="badge badge-green">8 disponibles</span>
+      </div>
+      <div class="modules-grid stagger">
+        <a href="agenda.html"   class="module-card"><span class="module-icon">📝</span><div class="module-name">Agenda</div><div class="module-desc">Tareas y horarios</div></a>
+        <a href="reciclaje.html"class="module-card"><span class="module-icon">♻️</span><div class="module-name">Reciclaje</div><div class="module-desc">Aprende a reciclar</div></a>
+        <a href="chat.html"     class="module-card"><span class="module-icon">💬</span><div class="module-name">Chat</div><div class="module-desc">Salas privadas</div></a>
+        <a href="juego.html"    class="module-card"><span class="module-icon">🎮</span><div class="module-name">Juego</div><div class="module-desc">Separa la basura</div></a>
+        <a href="ranking.html"  class="module-card"><span class="module-icon">🏆</span><div class="module-name">Ranking</div><div class="module-desc">Top global</div></a>
+        <a href="perfil.html"   class="module-card"><span class="module-icon">👤</span><div class="module-name">Perfil</div><div class="module-desc">Tu avatar eco</div></a>
+        <a href="ecobot.html"   class="module-card"><span class="module-icon">🤖</span><div class="module-name">EcoBot</div><div class="module-desc">IA asistente</div></a>
+        <a href="#"             class="module-card" style="opacity:0.5;cursor:default;"><span class="module-icon">📊</span><div class="module-name">Reportes</div><div class="module-desc">Próximamente</div></a>
+      </div>
+
+      <!-- Dashboard bottom -->
+      <div class="dashboard-bottom stagger">
+        <!-- Today tasks -->
+        <div class="card">
+          <div class="section-hd">
+            <h2>📝 Tareas de hoy</h2>
+            <a href="agenda.html" class="btn btn-ghost btn-sm">Ver todo →</a>
+          </div>
+          <div class="today-tasks" id="today-tasks">
+            <div style="color:var(--text-muted);font-size:0.85rem;text-align:center;padding:20px;">
+              Cargando tareas...
+            </div>
+          </div>
+        </div>
+
+        <!-- Weekly challenges -->
+        <div class="card">
+          <div class="section-hd">
+            <h2>♻️ Retos semanales</h2>
+            <a href="reciclaje.html" class="btn btn-ghost btn-sm">Ver todo →</a>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:12px;">
+            <div class="challenge-mini">
+              <div style="display:flex;justify-content:space-between;align-items:center;">
+                <h4>🥤 Recicla 5 botellas de plástico</h4>
+                <span class="badge badge-lime">+50 pts</span>
+              </div>
+              <p style="font-size:0.75rem;color:var(--text-muted);">Progreso: 2 / 5</p>
+              <div class="prog-bar"><div class="prog-fill" style="width:40%"></div></div>
+            </div>
+            <div class="challenge-mini">
+              <div style="display:flex;justify-content:space-between;align-items:center;">
+                <h4>📰 Separa papel y cartón 3 días</h4>
+                <span class="badge badge-cyan">+30 pts</span>
+              </div>
+              <p style="font-size:0.75rem;color:var(--text-muted);">Progreso: 1 / 3</p>
+              <div class="prog-bar"><div class="prog-fill" style="width:33%"></div></div>
+            </div>
+            <div class="challenge-mini">
+              <div style="display:flex;justify-content:space-between;align-items:center;">
+                <h4>🌱 Completa el juego de separación</h4>
+                <span class="badge badge-amber">+80 pts</span>
+              </div>
+              <p style="font-size:0.75rem;color:var(--text-muted);">Progreso: 0 / 1</p>
+              <div class="prog-bar"><div class="prog-fill" style="width:0%"></div></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <script type="module">
+    import { initParticles, toast, getRank, getRankProgress } from '../js/utils.js';
+    import { auth, db } from '../js/firebase.js';
+    import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+    import { collection, query, where, getDocs, doc, getDoc, orderBy, limit } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+    initParticles();
+
+    async function loadUserData(uid) {
+      const snap = await getDoc(doc(db, 'users', uid));
+      return snap.exists() ? snap.data() : null;
+    }
+
+    async function loadTodayTasks(uid) {
+      try {
+        const q = query(collection(db, 'tareas'), where('uid','==',uid), where('done','==',false), limit(5));
+        const snaps = await getDocs(q);
+        const el = document.getElementById('today-tasks');
+        if (snaps.empty) {
+          el.innerHTML = '<div style="color:var(--text-muted);font-size:0.85rem;text-align:center;padding:20px;">🎉 Sin tareas pendientes</div>';
+          return 0;
+        }
+        el.innerHTML = '';
+        snaps.forEach(d => {
+          const t = d.data();
+          el.innerHTML += `
+            <div class="task-card priority-${t.prioridad||'baja'}">
+              <div class="task-check" onclick="this.classList.toggle('checked');this.textContent='✓'"></div>
+              <div>
+                <div class="task-title">${t.titulo}</div>
+                <div class="task-meta">📅 ${t.fecha || 'Sin fecha'} · ${t.materia||''}</div>
+              </div>
+            </div>`;
+        });
+        return snaps.size;
+      } catch(e) { return 0; }
+    }
+
+    onAuthStateChanged(auth, async (user) => {
+      if (!user) {
+        const demo = sessionStorage.getItem('eco_demo');
+        if (!demo) { location.href = '../index.html'; return; }
+        const u = JSON.parse(sessionStorage.getItem('eco_user') || '{}');
+        document.getElementById('user-name').textContent = u.displayName || 'Demo';
+        const rank = getRank(u.puntos || 450);
+        document.getElementById('user-rank-badge').innerHTML = `<span class="badge badge-green">${rank.icon} ${rank.name}</span>`;
+        document.getElementById('stat-puntos').textContent = u.puntos || 450;
+        document.getElementById('today-tasks').innerHTML = '<div style="color:var(--text-muted);font-size:0.85rem;text-align:center;padding:20px;">Modo demo — conecta Firebase para ver tus tareas</div>';
+        return;
+      }
+
+      const data = await loadUserData(user.uid);
+      if (!data) return;
+
+      document.getElementById('user-name').textContent = (data.displayName||user.displayName||'EcoHéroe').split(' ')[0];
+      if (data.photoURL) document.getElementById('nav-avatar').src = data.photoURL;
+
+      const rank = getRank(data.puntos || 0);
+      document.getElementById('user-rank-badge').innerHTML = `<span class="badge badge-green">${rank.icon} ${rank.name}</span>`;
+      document.getElementById('stat-puntos').textContent  = data.puntos || 0;
+
+      const tareas = await loadTodayTasks(user.uid);
+      document.getElementById('stat-tareas').textContent = tareas;
+    });
+  </script>
+</body>
+</html>

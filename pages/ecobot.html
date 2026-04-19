@@ -1,0 +1,559 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>EcoAgenda — EcoBot</title>
+  <link rel="stylesheet" href="../css/global.css" />
+  <link rel="stylesheet" href="../css/componentes.css" />
+  <style>
+    .ecobot-page { background:radial-gradient(ellipse at top, rgba(34,197,94,0.06) 0%, transparent 55%); }
+
+    .bot-layout { display:grid; grid-template-columns:1fr 300px; gap:20px; align-items:start; }
+
+    /* Chat window */
+    .bot-window {
+      background:var(--bg-card); border:1px solid var(--border-soft);
+      border-radius:var(--r-xl); overflow:hidden;
+      display:flex; flex-direction:column;
+      height:calc(100vh - var(--nav-h) - 120px);
+      min-height:500px;
+    }
+
+    .bot-header {
+      padding:16px 24px;
+      border-bottom:1px solid var(--border-soft);
+      display:flex; align-items:center; gap:14px;
+      background:linear-gradient(135deg, rgba(11,80,34,0.5), transparent);
+    }
+    .bot-logo {
+      width:48px; height:48px; border-radius:50%;
+      background:linear-gradient(135deg,var(--green-700),var(--green-500));
+      display:flex; align-items:center; justify-content:center;
+      font-size:1.4rem;
+      box-shadow:0 0 20px rgba(34,197,94,0.3);
+      animation:botPulse 3s ease-in-out infinite;
+    }
+    @keyframes botPulse {
+      0%,100% { box-shadow:0 0 20px rgba(34,197,94,0.3); }
+      50% { box-shadow:0 0 35px rgba(34,197,94,0.55); }
+    }
+    .bot-header-info h3 { font-family:var(--font-display); font-weight:800; font-size:1rem; }
+    .bot-header-info p  { font-size:0.72rem; color:var(--text-muted); }
+    .bot-status { margin-left:auto; display:flex; align-items:center; gap:6px; font-size:0.72rem; color:var(--green-400); }
+    .status-dot { width:6px; height:6px; background:var(--green-400); border-radius:50%; animation:pulse-dot 1.5s infinite; }
+
+    .bot-messages {
+      flex:1; overflow-y:auto; padding:24px;
+      display:flex; flex-direction:column; gap:16px;
+    }
+
+    .bot-msg, .user-msg {
+      display:flex; gap:10px; max-width:88%;
+    }
+    .user-msg { flex-direction:row-reverse; align-self:flex-end; }
+
+    .bot-avatar-sm {
+      width:36px; height:36px; border-radius:50%;
+      background:linear-gradient(135deg,var(--green-700),var(--green-500));
+      display:flex; align-items:center; justify-content:center;
+      font-size:1rem; flex-shrink:0;
+    }
+
+    .bot-bubble {
+      background:var(--bg-elevated);
+      border:1px solid var(--border-soft);
+      border-radius:var(--r-lg); border-bottom-left-radius:4px;
+      padding:14px 18px; font-size:0.88rem; line-height:1.7;
+      max-width:100%;
+    }
+    .bot-bubble strong { color:var(--green-300); }
+    .bot-bubble ul { padding-left:20px; margin-top:6px; }
+    .bot-bubble li { margin-bottom:4px; }
+    .bot-bubble code {
+      background:var(--bg-deep); padding:2px 6px; border-radius:4px;
+      font-family:var(--font-mono); font-size:0.82rem;
+      color:var(--accent-lime);
+    }
+
+    .user-bubble-bot {
+      background:rgba(34,197,94,0.15);
+      border:1px solid rgba(34,197,94,0.25);
+      border-radius:var(--r-lg); border-bottom-right-radius:4px;
+      padding:12px 16px; font-size:0.88rem; color:var(--green-100);
+    }
+
+    .bot-time { font-size:0.65rem; color:var(--text-muted); margin-top:6px; }
+    .user-msg .bot-time { text-align:right; }
+
+    .typing-wrap {
+      display:flex; gap:10px; align-items:center;
+    }
+    .typing-bubble {
+      background:var(--bg-elevated); border:1px solid var(--border-soft);
+      border-radius:var(--r-lg); border-bottom-left-radius:4px;
+      padding:14px 18px;
+      display:flex; align-items:center; gap:4px;
+    }
+    .typing-dot {
+      width:6px; height:6px; background:var(--green-400); border-radius:50%;
+      animation:typing-bounce 1.2s ease-in-out infinite;
+    }
+    .typing-dot:nth-child(2){ animation-delay:.2s; }
+    .typing-dot:nth-child(3){ animation-delay:.4s; }
+    @keyframes typing-bounce {
+      0%,60%,100%{transform:translateY(0);opacity:.4}
+      30%{transform:translateY(-7px);opacity:1}
+    }
+
+    /* Input area */
+    .bot-input-area {
+      padding:16px 20px;
+      border-top:1px solid var(--border-soft);
+      display:flex; gap:10px; align-items:flex-end;
+    }
+    .bot-input {
+      flex:1; background:var(--bg-elevated);
+      border:1.5px solid var(--border-soft);
+      border-radius:var(--r-lg); border-bottom-right-radius:4px;
+      color:var(--text-primary); font-family:var(--font-body);
+      font-size:0.9rem; padding:12px 16px;
+      outline:none; resize:none; max-height:120px;
+      transition:border-color var(--t-fast); min-height:48px;
+      line-height:1.5;
+    }
+    .bot-input:focus { border-color:var(--green-500); }
+    .bot-input::placeholder { color:var(--text-ghost); }
+
+    .send-btn {
+      width:44px; height:44px; border-radius:50%;
+      background:linear-gradient(135deg,var(--green-500),var(--green-400));
+      border:none; color:var(--bg-deep); font-size:1.1rem;
+      cursor:pointer; flex-shrink:0; transition:all var(--t-mid);
+      display:flex; align-items:center; justify-content:center;
+    }
+    .send-btn:hover { transform:scale(1.1); box-shadow:0 4px 20px rgba(34,197,94,0.4); }
+    .send-btn:disabled { opacity:0.4; transform:none; cursor:wait; }
+
+    /* Camera input */
+    .cam-btn {
+      width:44px; height:44px; border-radius:50%;
+      background:var(--bg-elevated); border:1.5px solid var(--border-soft);
+      color:var(--text-muted); font-size:1.1rem; cursor:pointer;
+      display:flex; align-items:center; justify-content:center;
+      transition:all var(--t-fast); flex-shrink:0;
+    }
+    .cam-btn:hover { border-color:var(--green-500); color:var(--green-300); }
+
+    /* Sidebar */
+    .bot-sidebar { display:flex; flex-direction:column; gap:16px; }
+
+    .quick-prompts { display:flex; flex-direction:column; gap:6px; }
+    .qp-btn {
+      background:var(--bg-elevated); border:1px solid var(--border-soft);
+      border-radius:var(--r-md); padding:10px 14px;
+      color:var(--text-secondary); font-family:var(--font-body);
+      font-size:0.78rem; cursor:pointer; text-align:left;
+      transition:all var(--t-fast); width:100%;
+    }
+    .qp-btn:hover { border-color:var(--green-500); color:var(--green-300); background:rgba(34,197,94,0.06); }
+
+    .mode-selector { display:flex; flex-direction:column; gap:6px; }
+    .mode-btn {
+      display:flex; align-items:center; gap:10px; padding:12px 14px;
+      background:var(--bg-elevated); border:1.5px solid var(--border-soft);
+      border-radius:var(--r-md); cursor:pointer;
+      transition:all var(--t-mid); font-family:var(--font-body);
+      font-size:0.82rem; font-weight:600;
+    }
+    .mode-btn:hover { border-color:var(--border-mid); }
+    .mode-btn.active { border-color:var(--green-500); background:rgba(34,197,94,0.08); color:var(--green-300); }
+    .mode-icon { font-size:1.3rem; }
+
+    @media(max-width:900px) { .bot-layout{grid-template-columns:1fr;} .bot-sidebar{display:none;} }
+  </style>
+</head>
+<body>
+  <canvas id="bg-canvas"></canvas>
+  <div id="toast-container"></div>
+
+  <nav class="eco-nav">
+    <div class="container">
+      <a href="inicio.html" class="nav-logo"><div class="logo-dot"></div>EcoAgenda</a>
+      <ul class="nav-links">
+        <li><a href="inicio.html"><span class="nav-icon">🏠</span>Inicio</a></li>
+        <li><a href="agenda.html"><span class="nav-icon">📝</span>Agenda</a></li>
+        <li><a href="reciclaje.html"><span class="nav-icon">♻️</span>Recicla</a></li>
+        <li><a href="chat.html"><span class="nav-icon">💬</span>Chat</a></li>
+        <li><a href="juego.html"><span class="nav-icon">🎮</span>Juego</a></li>
+        <li><a href="ranking.html"><span class="nav-icon">🏆</span>Ranking</a></li>
+        <li><a href="ecobot.html" class="active"><span class="nav-icon">🤖</span>EcoBot</a></li>
+        <li><a href="perfil.html"><span class="nav-icon">👤</span>Perfil</a></li>
+      </ul>
+      <div class="nav-user">
+        <img id="nav-avatar" src="https://ui-avatars.com/api/?name=Eco&background=0b5022&color=86efac&bold=true" class="nav-avatar" />
+      </div>
+    </div>
+  </nav>
+
+  <div class="page-wrap main-content ecobot-page">
+    <div class="container">
+      <div style="margin-bottom:20px;">
+        <h1 class="section-title">🤖 EcoBot</h1>
+        <p class="section-subtitle">Tu compañero ecológico impulsado por Claude IA</p>
+      </div>
+
+      <div class="bot-layout">
+        <!-- Chat window -->
+        <div class="bot-window">
+          <!-- Header -->
+          <div class="bot-header">
+            <div class="bot-logo">🌿</div>
+            <div class="bot-header-info">
+              <h3>EcoBot</h3>
+              <p>Impulsado por Claude · Experto en reciclaje y ecología</p>
+            </div>
+            <div class="bot-status"><div class="status-dot"></div>En línea</div>
+          </div>
+
+          <!-- Messages -->
+          <div class="bot-messages" id="bot-messages">
+            <!-- Greeting rendered by JS -->
+          </div>
+
+          <!-- Input -->
+          <div class="bot-input-area">
+            <button class="cam-btn" onclick="document.getElementById('img-input').click()" title="Enviar imagen">📷</button>
+            <input type="file" id="img-input" accept="image/*" style="display:none" onchange="sendImage(this)" />
+            <textarea class="bot-input" id="bot-input" placeholder="Pregúntame sobre reciclaje, tu horario, ecología..." rows="1"
+              onkeydown="handleKey(event)" oninput="autoResize(this)"></textarea>
+            <button class="send-btn" id="send-btn" onclick="sendMessage()">→</button>
+          </div>
+        </div>
+
+        <!-- Sidebar -->
+        <div class="bot-sidebar stagger">
+          <!-- Mode selector -->
+          <div class="card">
+            <h3 style="font-family:var(--font-display);font-size:0.9rem;margin-bottom:12px;">🎯 Modo</h3>
+            <div class="mode-selector">
+              <button class="mode-btn active" onclick="setMode('eco',this)">
+                <span class="mode-icon">♻️</span>
+                <div>
+                  <div>Experto en reciclaje</div>
+                  <div style="font-size:0.68rem;color:var(--text-muted)">Respuestas ecológicas</div>
+                </div>
+              </button>
+              <button class="mode-btn" onclick="setMode('tutor',this)">
+                <span class="mode-icon">📚</span>
+                <div>
+                  <div>Tutor escolar</div>
+                  <div style="font-size:0.68rem;color:var(--text-muted)">Ayuda con tareas</div>
+                </div>
+              </button>
+              <button class="mode-btn" onclick="setMode('agenda',this)">
+                <span class="mode-icon">📅</span>
+                <div>
+                  <div>Analizar horario</div>
+                  <div style="font-size:0.68rem;color:var(--text-muted)">Foto de tu horario</div>
+                </div>
+              </button>
+              <button class="mode-btn" onclick="setMode('compañero',this)">
+                <span class="mode-icon">🌿</span>
+                <div>
+                  <div>Compañero amigable</div>
+                  <div style="font-size:0.68rem;color:var(--text-muted)">Conversación casual</div>
+                </div>
+              </button>
+            </div>
+          </div>
+
+          <!-- Quick prompts -->
+          <div class="card">
+            <h3 style="font-family:var(--font-display);font-size:0.9rem;margin-bottom:12px;">⚡ Preguntas rápidas</h3>
+            <div class="quick-prompts" id="quick-prompts"></div>
+          </div>
+
+          <!-- Stats -->
+          <div class="card">
+            <h3 style="font-family:var(--font-display);font-size:0.9rem;margin-bottom:12px;">📊 Sesión</h3>
+            <div style="display:flex;flex-direction:column;gap:8px;font-size:0.82rem;">
+              <div style="display:flex;justify-content:space-between;">
+                <span style="color:var(--text-muted)">Mensajes</span>
+                <span id="msg-count" style="font-weight:700;color:var(--green-300)">0</span>
+              </div>
+              <div style="display:flex;justify-content:space-between;">
+                <span style="color:var(--text-muted)">Modo actual</span>
+                <span id="current-mode" style="font-weight:700;">Reciclaje</span>
+              </div>
+              <div style="display:flex;justify-content:space-between;">
+                <span style="color:var(--text-muted)">Puntos ganados</span>
+                <span id="pts-earned" style="font-weight:700;color:var(--accent-lime)">+0</span>
+              </div>
+            </div>
+            <button class="btn btn-ghost btn-sm" style="width:100%;margin-top:12px;" onclick="clearChat()">🗑️ Limpiar chat</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script type="module">
+    import { initParticles, toast } from '../js/utils.js';
+    import { auth } from '../js/firebase.js';
+    import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+
+    initParticles();
+    onAuthStateChanged(auth, u => { if(!u&&!sessionStorage.getItem('eco_demo')) location.href='../index.html'; });
+
+    let msgCount=0, ptsEarned=0;
+    let currentMode='eco';
+    let conversationHistory = [];
+
+    const SYSTEM_PROMPTS = {
+      eco: `Eres EcoBot, un asistente experto en reciclaje y ecología integrado en EcoAgenda, una app escolar. 
+Responde siempre en español de manera amigable y educativa. 
+Cuando alguien pregunte cómo reciclar algo, da: el contenedor correcto (papel=azul, plástico=amarillo, vidrio=verde, orgánico=marrón, metal=lila, no reciclable=gris), pasos de preparación y un dato ecológico interesante.
+Usa emojis relevantes. Sé conciso (máx 3-4 párrafos). Termina con un consejo ecológico o dato curioso.`,
+
+      tutor: `Eres EcoBot en modo tutor escolar. Ayudas a estudiantes con sus tareas y materias escolares (matemáticas, español, ciencias, historia, etc.).
+Explica con pasos claros y ejemplos. Usa lenguaje simple y amigable. Incluye emojis para hacer más ameno el aprendizaje.
+Responde siempre en español.`,
+
+      agenda: `Eres EcoBot analizando horarios escolares. Cuando el usuario te envíe una imagen de su horario, extrae:
+- Días de la semana
+- Horas de cada clase
+- Nombre de cada materia
+- Salones si aparecen
+Presenta la información en formato de tabla clara. Sugiere cómo organizar mejor el tiempo de estudio.
+Responde en español.`,
+
+      compañero: `Eres EcoBot, el compañero ecológico amigable de EcoAgenda. Eres positivo, motivador y apasionado por el medio ambiente.
+Celebra los logros del usuario, motívalo a reciclar y cuidar el planeta. Usa emojis y un tono juvenil y entusiasta.
+Responde en español.`
+    };
+
+    const QUICK_PROMPTS = {
+      eco:       ['♻️ ¿Dónde tiro una botella PET?','📰 ¿Cómo reciclar cartón?','🔋 ¿Qué hago con pilas usadas?','🌎 ¿Por qué es importante reciclar?'],
+      tutor:     ['📐 Explícame el Teorema de Pitágoras','🧪 ¿Qué es la fotosíntesis?','📝 ¿Cómo hacer un resumen?','🔢 Ayúdame con fracciones'],
+      agenda:    ['📷 Analiza mi horario (sube foto)','📅 ¿Cómo organizo mi semana?','⏰ Ayúdame a planificar mis tareas','📚 ¿Cuánto tiempo estudiar por día?'],
+      compañero: ['🌿 ¡Hola EcoBot!','🌍 ¿Cuántos árboles se talan al día?','♻️ Cuéntame un dato curioso de reciclaje','🌱 ¿Cómo puedo ser más ecológico?'],
+    };
+
+    function renderQuickPrompts() {
+      const el = document.getElementById('quick-prompts');
+      el.innerHTML = (QUICK_PROMPTS[currentMode]||QUICK_PROMPTS.eco).map(p=>`
+        <button class="qp-btn" onclick="sendQuick('${p.replace(/'/g,"\\'")}')">
+          ${p}
+        </button>`).join('');
+    }
+
+    window.setMode = (mode, btn) => {
+      currentMode = mode;
+      document.querySelectorAll('.mode-btn').forEach(b=>b.classList.remove('active'));
+      btn.classList.add('active');
+      const modeNames={eco:'Reciclaje',tutor:'Tutor',agenda:'Horario',compañero:'Compañero'};
+      document.getElementById('current-mode').textContent = modeNames[mode];
+      renderQuickPrompts();
+      conversationHistory = []; // Reset conversation on mode change
+      addBotMessage(`✅ Modo cambiado a **${modeNames[mode]}**. ¿En qué te puedo ayudar?`);
+    };
+
+    window.sendQuick = (text) => {
+      document.getElementById('bot-input').value = text;
+      sendMessage();
+    };
+
+    // ── Main send ─────────────────────────────────────
+    window.sendMessage = async () => {
+      const input = document.getElementById('bot-input');
+      const text  = input.value.trim();
+      if (!text) return;
+      input.value = ''; autoResize(input);
+
+      addUserMessage(text);
+      await callEcoBot(text);
+    };
+
+    async function callEcoBot(userText, imageData=null) {
+      showTyping();
+
+      const userContent = imageData
+        ? [{ type:'image', source:{ type:'base64', media_type:'image/jpeg', data:imageData }},
+           { type:'text',  text: userText || 'Analiza esta imagen' }]
+        : userText;
+
+      conversationHistory.push({ role:'user', content:userContent });
+
+      try {
+        const resp = await fetch('/.netlify/functions/claude',{
+          method:'POST',
+          headers:{
+  'Content-Type':'application/json',
+  
+},
+          body:JSON.stringify({
+            model:'claude-sonnet-4-20250514',
+            max_tokens:1000,
+            system: SYSTEM_PROMPTS[currentMode],
+            messages: conversationHistory
+          })
+        });
+
+        if (!resp.ok) throw new Error('HTTP '+resp.status);
+
+        const data = await resp.json();
+        const reply = data.content?.[0]?.text || 'No pude generar una respuesta.';
+
+        conversationHistory.push({ role:'assistant', content:reply });
+
+        hideTyping();
+        addBotMessage(reply);
+
+        // Give points for using EcoBot
+        ptsEarned += 2;
+        document.getElementById('pts-earned').textContent = '+'+ptsEarned;
+
+      } catch(e) {
+        hideTyping();
+        addBotMessage('❌ Lo siento, no pude conectarme. Verifica tu conexión a internet e inténtalo de nuevo. Si el problema persiste, puede ser que la API de Claude no esté configurada.');
+      }
+
+      msgCount++;
+      document.getElementById('msg-count').textContent = msgCount;
+    }
+
+    // ── Image sending ─────────────────────────────────
+    window.sendImage = async (input) => {
+      if (!input.files[0]) return;
+      const file = input.files[0];
+
+      // Show preview in chat
+      const reader = new FileReader();
+      reader.onload = async (e) => {
+        const dataURL = e.target.result;
+        addUserImageMessage(dataURL);
+        const base64 = dataURL.split(',')[1];
+        await callEcoBot(currentMode==='agenda' ? 'Por favor analiza este horario escolar y extrae toda la información' : 'Analiza esta imagen y ayúdame', base64);
+      };
+      reader.readAsDataURL(file);
+      input.value='';
+    };
+
+    // ── Message renderers ─────────────────────────────
+    function addBotMessage(text) {
+      const msgs = document.getElementById('bot-messages');
+      const time  = now();
+      const html  = formatMarkdown(text);
+      msgs.innerHTML += `
+        <div class="bot-msg slide-up">
+          <div class="bot-avatar-sm">🌿</div>
+          <div>
+            <div class="bot-bubble">${html}</div>
+            <div class="bot-time">${time}</div>
+          </div>
+        </div>`;
+      msgs.scrollTop = msgs.scrollHeight;
+    }
+
+    function addUserMessage(text) {
+      const msgs = document.getElementById('bot-messages');
+      msgs.innerHTML += `
+        <div class="user-msg">
+          <div class="bot-avatar-sm" style="background:var(--bg-elevated);border:1px solid var(--border-mid);">👤</div>
+          <div>
+            <div class="user-bubble-bot">${escapeHtml(text)}</div>
+            <div class="bot-time">${now()}</div>
+          </div>
+        </div>`;
+      msgs.scrollTop = msgs.scrollHeight;
+    }
+
+    function addUserImageMessage(dataURL) {
+      const msgs = document.getElementById('bot-messages');
+      msgs.innerHTML += `
+        <div class="user-msg">
+          <div class="bot-avatar-sm" style="background:var(--bg-elevated);border:1px solid var(--border-mid);">👤</div>
+          <div>
+            <div class="user-bubble-bot">
+              <img src="${dataURL}" style="max-width:180px;border-radius:var(--r-md);display:block;" />
+            </div>
+            <div class="bot-time">${now()}</div>
+          </div>
+        </div>`;
+      msgs.scrollTop = msgs.scrollHeight;
+    }
+
+    function showTyping() {
+      const msgs = document.getElementById('bot-messages');
+      msgs.innerHTML += `
+        <div class="typing-wrap" id="typing-indicator">
+          <div class="bot-avatar-sm">🌿</div>
+          <div class="typing-bubble">
+            <div class="typing-dot"></div>
+            <div class="typing-dot"></div>
+            <div class="typing-dot"></div>
+          </div>
+        </div>`;
+      msgs.scrollTop = msgs.scrollHeight;
+      document.getElementById('send-btn').disabled = true;
+    }
+
+    function hideTyping() {
+      document.getElementById('typing-indicator')?.remove();
+      document.getElementById('send-btn').disabled = false;
+    }
+
+    // ── Greeting ──────────────────────────────────────
+    function greet() {
+      const greetings = [
+        `¡Hola! 🌿 Soy **EcoBot**, tu compañero ecológico con IA.\n\nPuedo ayudarte a:\n- **Reciclar correctamente** cualquier objeto\n- **Analizar tu horario** escolar con la cámara\n- **Resolver tareas** y preguntas escolares\n- **Chatear** sobre ecología y medio ambiente\n\n¿Por dónde empezamos? 🌍`,
+      ];
+      addBotMessage(greetings[0]);
+    }
+
+    // ── Utils ─────────────────────────────────────────
+    function formatMarkdown(text) {
+      return escapeHtml(text)
+        .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+        .replace(/\*(.*?)\*/g, '<em>$1</em>')
+        .replace(/`(.*?)`/g, '<code>$1</code>')
+        .replace(/^### (.*)/gm, '<h4 style="color:var(--green-300);margin:8px 0 4px;font-family:var(--font-display);">$1</h4>')
+        .replace(/^## (.*)/gm,  '<h3 style="color:var(--green-300);margin:10px 0 6px;font-family:var(--font-display);">$1</h3>')
+        .replace(/^- (.*)/gm,   '<li>$1</li>')
+        .replace(/(<li>.*<\/li>\n?)+/g, '<ul>$&</ul>')
+        .replace(/\n/g, '<br>');
+    }
+
+    function escapeHtml(s) {
+      return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+    }
+
+    function now() {
+      return new Date().toLocaleTimeString('es-MX',{hour:'2-digit',minute:'2-digit'});
+    }
+
+    window.handleKey = (e) => {
+      if (e.key==='Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); }
+    };
+
+    window.autoResize = (el) => {
+      el.style.height='auto';
+      el.style.height=Math.min(el.scrollHeight,120)+'px';
+    };
+
+    window.clearChat = () => {
+      conversationHistory = [];
+      document.getElementById('bot-messages').innerHTML='';
+      greet();
+      msgCount=0; ptsEarned=0;
+      document.getElementById('msg-count').textContent='0';
+      document.getElementById('pts-earned').textContent='+0';
+    };
+
+    // Init
+    renderQuickPrompts();
+    greet();
+  </script>
+</body>
+</html>

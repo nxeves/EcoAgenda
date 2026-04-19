@@ -1,0 +1,549 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>EcoAgenda — Chat</title>
+  <link rel="stylesheet" href="../css/global.css" />
+  <link rel="stylesheet" href="../css/componentes.css" />
+  <style>
+    .chat-page { padding-top:calc(var(--nav-h) + 16px); height:100vh; overflow:hidden; }
+    .chat-page .container { height:calc(100vh - var(--nav-h) - 16px); display:flex; flex-direction:column; }
+    .chat-page .chat-layout { flex:1; min-height:0; }
+
+    .join-modal-body { text-align:center; }
+    .room-code-input {
+      font-family:var(--font-mono); font-size:1.4rem; font-weight:700;
+      text-align:center; letter-spacing:6px; text-transform:uppercase;
+    }
+
+    .reactions-bar { display:flex; gap:4px; margin-top:6px; flex-wrap:wrap; }
+    .reaction-btn {
+      background:var(--bg-elevated); border:1px solid var(--border-soft);
+      border-radius:var(--r-full); padding:2px 8px; font-size:0.8rem;
+      cursor:pointer; transition:all var(--t-fast);
+    }
+    .reaction-btn:hover { border-color:var(--green-500); background:rgba(34,197,94,0.1); }
+    .reaction-btn.used { background:rgba(34,197,94,0.15); border-color:var(--green-500); }
+
+    .msg-audio {
+      display:flex; align-items:center; gap:8px; padding:8px;
+      background:var(--bg-elevated); border-radius:var(--r-md);
+      min-width:200px;
+    }
+    .audio-play-btn { font-size:1.2rem; cursor:pointer; }
+
+    .attach-bar {
+      display:flex; align-items:center; gap:8px; padding:8px 20px;
+      border-top:1px solid var(--border-soft);
+    }
+    .attach-btn {
+      background:transparent; border:none; cursor:pointer;
+      font-size:1.2rem; color:var(--text-muted);
+      padding:6px; border-radius:var(--r-sm);
+      transition:all var(--t-fast);
+    }
+    .attach-btn:hover { color:var(--green-300); background:var(--bg-elevated); }
+
+    .msg-img { max-width:220px; border-radius:var(--r-md); cursor:pointer; }
+
+    .recording-indicator {
+      display:none; align-items:center; gap:8px;
+      color:var(--accent-rose); font-size:0.82rem; font-weight:700;
+    }
+    .recording-indicator.active { display:flex; }
+    .rec-dot { width:8px; height:8px; background:var(--accent-rose); border-radius:50%; animation:pulse-dot 0.8s ease-in-out infinite; }
+  </style>
+</head>
+<body>
+  <canvas id="bg-canvas"></canvas>
+  <div id="toast-container"></div>
+
+  <nav class="eco-nav">
+    <div class="container">
+      <a href="inicio.html" class="nav-logo"><div class="logo-dot"></div>EcoAgenda</a>
+      <ul class="nav-links">
+        <li><a href="inicio.html"><span class="nav-icon">🏠</span>Inicio</a></li>
+        <li><a href="agenda.html"><span class="nav-icon">📝</span>Agenda</a></li>
+        <li><a href="reciclaje.html"><span class="nav-icon">♻️</span>Recicla</a></li>
+        <li><a href="chat.html" class="active"><span class="nav-icon">💬</span>Chat</a></li>
+        <li><a href="juego.html"><span class="nav-icon">🎮</span>Juego</a></li>
+        <li><a href="ranking.html"><span class="nav-icon">🏆</span>Ranking</a></li>
+        <li><a href="ecobot.html"><span class="nav-icon">🤖</span>EcoBot</a></li>
+        <li><a href="perfil.html"><span class="nav-icon">👤</span>Perfil</a></li>
+      </ul>
+      <div class="nav-user">
+        <img id="nav-avatar" src="https://ui-avatars.com/api/?name=Eco&background=0b5022&color=86efac&bold=true" class="nav-avatar" />
+      </div>
+    </div>
+  </nav>
+
+  <div class="chat-page">
+    <div class="container">
+      <div class="chat-layout">
+        <!-- Sidebar -->
+        <div class="chat-sidebar">
+          <div class="chat-sidebar-header">
+            <span style="font-family:var(--font-display);font-weight:800;font-size:0.95rem;">💬 Salas</span>
+            <div style="display:flex;gap:6px;">
+              <button class="btn btn-ghost btn-icon" onclick="openCreateRoom()" title="Crear sala">＋</button>
+              <button class="btn btn-ghost btn-icon" onclick="openJoinRoom()"   title="Unirse">🔑</button>
+            </div>
+          </div>
+          <div class="room-list" id="room-list">
+            <!-- rooms rendered here -->
+          </div>
+        </div>
+
+        <!-- Chat main -->
+        <div class="chat-main">
+          <div class="chat-header" id="chat-header">
+            <div class="room-avatar" id="header-avatar">💬</div>
+            <div>
+              <div style="font-family:var(--font-display);font-weight:800;" id="header-name">Selecciona una sala</div>
+              <div style="font-size:0.72rem;color:var(--text-muted);" id="header-code">—</div>
+            </div>
+            <div style="margin-left:auto;display:flex;gap:8px;">
+              <button class="btn btn-ghost btn-sm" onclick="copyCode()" id="btn-copy-code" style="display:none;">📋 Copiar código</button>
+              <button class="btn btn-ghost btn-sm" id="header-members">0 miembros</button>
+            </div>
+          </div>
+
+          <div class="chat-messages" id="chat-messages">
+            <div style="text-align:center;padding:40px;color:var(--text-muted);">
+              <div style="font-size:3rem;margin-bottom:12px;">💬</div>
+              <p>Selecciona una sala para chatear</p>
+              <div style="margin-top:16px;display:flex;gap:10px;justify-content:center;">
+                <button class="btn btn-primary btn-sm" onclick="openCreateRoom()">Crear sala</button>
+                <button class="btn btn-secondary btn-sm" onclick="openJoinRoom()">Unirse con código</button>
+              </div>
+            </div>
+          </div>
+
+          <div class="attach-bar">
+            <button class="attach-btn" onclick="document.getElementById('file-upload').click()" title="Imagen">🖼️</button>
+            <input type="file" id="file-upload" accept="image/*" style="display:none" onchange="sendImage(this)" />
+            <button class="attach-btn" id="btn-record" onclick="toggleRecording()" title="Audio">🎙️</button>
+            <div class="recording-indicator" id="rec-indicator">
+              <div class="rec-dot"></div> Grabando...
+            </div>
+          </div>
+
+          <div class="chat-input-area">
+            <input class="chat-input" type="text" id="chat-input" placeholder="Escribe un mensaje..." onkeydown="handleKey(event)" />
+            <button class="btn btn-ghost btn-icon" onclick="showEmojiPicker()" title="Reacciones">😊</button>
+            <button class="btn btn-primary btn-icon" onclick="sendMessage()">→</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Create Room Modal -->
+  <div class="modal-overlay" id="create-modal" style="display:none;">
+    <div class="modal-box">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;">
+        <div class="modal-title">🏠 Crear sala</div>
+        <button class="btn btn-ghost btn-sm" onclick="closeModal('create-modal')">✕</button>
+      </div>
+      <div class="input-group">
+        <label class="input-label">Nombre de la sala</label>
+        <input class="input-field" type="text" id="new-room-name" placeholder="Ej: Proyecto Ciencias 🌿" maxlength="40" />
+      </div>
+      <div class="input-group">
+        <label class="input-label">Descripción (opcional)</label>
+        <input class="input-field" type="text" id="new-room-desc" placeholder="Sala de mi grupo escolar..." maxlength="80" />
+      </div>
+      <div style="margin-bottom:16px;">
+        <label class="input-label">Ícono</label>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px;">
+          🌿 🌍 🎒 📚 🎨 🔬 ⚽ 🎮 🏆 💡 🌈 🦋
+        </div>
+      </div>
+      <button class="btn btn-primary" style="width:100%" onclick="createRoom()">Crear sala ✨</button>
+    </div>
+  </div>
+
+  <!-- Join Room Modal -->
+  <div class="modal-overlay" id="join-modal" style="display:none;">
+    <div class="modal-box join-modal-body">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;">
+        <div class="modal-title">🔑 Unirse a sala</div>
+        <button class="btn btn-ghost btn-sm" onclick="closeModal('join-modal')">✕</button>
+      </div>
+      <p style="color:var(--text-muted);font-size:0.85rem;margin-bottom:20px;">
+        Ingresa el código de 6 caracteres que te compartió tu compañero
+      </p>
+      <div class="input-group">
+        <input class="input-field room-code-input" type="text" id="join-code" placeholder="ABC123" maxlength="6" />
+      </div>
+      <button class="btn btn-primary" style="width:100%;margin-top:8px" onclick="joinRoom()">Unirse →</button>
+    </div>
+  </div>
+
+  <script type="module">
+    import { initParticles, toast, generateCode } from '../js/utils.js';
+    import { auth, rtdb } from '../js/firebase.js';
+    import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+    import {
+      ref, push, set, onValue, get, update, serverTimestamp
+    } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
+
+    initParticles();
+
+    let currentUser = null;
+    let currentRoomId = null;
+    let currentRoomCode = null;
+    let unsubMessages = null;
+    let mediaRecorder = null;
+    let audioChunks = [];
+    let userRooms = [];
+
+    onAuthStateChanged(auth, async (user) => {
+      if (!user) {
+        if (!sessionStorage.getItem('eco_demo')) { location.href='../index.html'; return; }
+        const u = JSON.parse(sessionStorage.getItem('eco_user')||'{}');
+        currentUser = { uid:'demo', displayName:u.displayName||'Demo', photoURL:'' };
+        loadDemoRooms();
+        return;
+      }
+      currentUser = user;
+      loadUserRooms();
+    });
+
+    // ── Load rooms ────────────────────────────────────
+    function loadUserRooms() {
+      const userRoomsRef = ref(rtdb, `userRooms/${currentUser.uid}`);
+      onValue(userRoomsRef, snap => {
+        const data = snap.val() || {};
+        userRooms = Object.keys(data);
+        renderRoomList(userRooms.map(id => ({ id, ...data[id] })));
+      });
+    }
+
+    function loadDemoRooms() {
+      const demoRooms = [
+        { id:'demo1', name:'🌍 General EcoAgenda', desc:'Sala principal', code:'ECO001', members:12 },
+        { id:'demo2', name:'🔬 Proyecto Ciencias', desc:'Grupo 3B',       code:'SCI342', members:5  },
+      ];
+      renderRoomList(demoRooms);
+      selectRoom(demoRooms[0]);
+    }
+
+    function renderRoomList(rooms) {
+      const el = document.getElementById('room-list');
+      if (!rooms.length) {
+        el.innerHTML='<div style="padding:20px;text-align:center;color:var(--text-muted);font-size:0.82rem;">Sin salas — crea o únete a una</div>';
+        return;
+      }
+      el.innerHTML = rooms.map(r=>`
+        <div class="room-item${r.id===currentRoomId?' active':''}" onclick="selectRoomById('${r.id}')">
+          <div class="room-avatar">${r.icon||'💬'}</div>
+          <div style="min-width:0;">
+            <div class="room-name">${r.name||'Sala'}</div>
+            <div class="room-preview">${r.desc||r.code||''}</div>
+          </div>
+        </div>`).join('');
+    }
+
+    window.selectRoomById = (id) => {
+      if (currentUser.uid==='demo') {
+        const demos=[
+          { id:'demo1', name:'🌍 General EcoAgenda', code:'ECO001', members:12, icon:'🌍' },
+          { id:'demo2', name:'🔬 Proyecto Ciencias',  code:'SCI342', members:5,  icon:'🔬' }
+        ];
+        selectRoom(demos.find(r=>r.id===id)||demos[0]);
+        return;
+      }
+      get(ref(rtdb, `rooms/${id}`)).then(snap=>{
+        if (snap.exists()) selectRoom({ id, ...snap.val() });
+      });
+    };
+
+    function selectRoom(room) {
+      currentRoomId   = room.id;
+      currentRoomCode = room.code;
+
+      document.getElementById('header-avatar').textContent  = room.icon||'💬';
+      document.getElementById('header-name').textContent    = room.name||'Sala';
+      document.getElementById('header-code').textContent    = `Código: ${room.code||'—'}`;
+      document.getElementById('header-members').textContent = `${room.members||1} miembros`;
+      document.getElementById('btn-copy-code').style.display='inline-flex';
+
+      // Render demo messages or subscribe real
+      if (currentUser.uid==='demo') {
+        renderDemoMessages(room.name);
+      } else {
+        subscribeMessages(room.id);
+      }
+    }
+
+    function renderDemoMessages(roomName) {
+      const msgs = document.getElementById('chat-messages');
+      msgs.innerHTML = `
+        <div style="text-align:center;margin:12px 0;font-size:0.72rem;color:var(--text-muted);">— Hoy —</div>
+        <div class="msg">
+          <div class="msg-avatar">🌱</div>
+          <div>
+            <div style="font-size:0.7rem;color:var(--text-muted);margin-bottom:3px;">EcoUser · 10:24</div>
+            <div class="msg-bubble">¡Hola equipo! 👋 ¿Ya empezaron el proyecto?</div>
+            <div class="reactions-bar">
+              <span class="reaction-btn">👋 2</span>
+              <span class="reaction-btn">🌿 1</span>
+            </div>
+          </div>
+        </div>
+        <div class="msg own">
+          <div class="msg-avatar">🌿</div>
+          <div>
+            <div style="font-size:0.7rem;color:var(--text-muted);text-align:right;margin-bottom:3px;">Tú · 10:26</div>
+            <div class="msg-bubble">¡Sí! Estoy recopilando datos de reciclaje 🗑️</div>
+          </div>
+        </div>
+        <div class="msg">
+          <div class="msg-avatar">🌳</div>
+          <div>
+            <div style="font-size:0.7rem;color:var(--text-muted);margin-bottom:3px;">EcoProfe · 10:30</div>
+            <div class="msg-bubble">Recuerden que el lunes entregan el informe. Mucho ánimo 💪</div>
+            <div class="reactions-bar">
+              <span class="reaction-btn">💪 5</span>
+              <span class="reaction-btn">✅ 3</span>
+            </div>
+          </div>
+        </div>`;
+      msgs.scrollTop = msgs.scrollHeight;
+    }
+
+    function subscribeMessages(roomId) {
+      const msgsRef = ref(rtdb, `messages/${roomId}`);
+      if (unsubMessages) unsubMessages();
+      unsubMessages = onValue(msgsRef, snap => {
+        const data = snap.val() || {};
+        const msgs = Object.entries(data).map(([id,m])=>({id,...m})).sort((a,b)=>a.timestamp-b.timestamp);
+        renderMessages(msgs);
+      });
+    }
+
+    function renderMessages(msgs) {
+      const el = document.getElementById('chat-messages');
+      el.innerHTML = msgs.map(m => {
+        const isOwn = m.uid === currentUser.uid;
+        const time  = m.timestamp ? new Date(m.timestamp).toLocaleTimeString('es-MX',{hour:'2-digit',minute:'2-digit'}) : '';
+        let content = '';
+        if (m.type==='image') {
+          content = `<img class="msg-img" src="${m.url}" onclick="window.open('${m.url}')" />`;
+        } else if (m.type==='audio') {
+          content = `<div class="msg-audio"><span class="audio-play-btn" onclick="playAudio('${m.url}')">▶️</span><audio src="${m.url}" preload="none"></audio><span style="font-size:0.75rem">Audio ${fmtSecs(m.duration||0)}</span></div>`;
+        } else {
+          content = escapeHtml(m.text||'');
+        }
+        const reacts = m.reactions ? Object.entries(m.reactions).map(([e,c])=>`<span class="reaction-btn" onclick="reactMsg('${m.id}','${e}')">${e} ${c}</span>`).join('') : '';
+        return `
+          <div class="msg${isOwn?' own':''}" id="msg-${m.id}">
+            <div class="msg-avatar">${m.avatar||'🌱'}</div>
+            <div>
+              ${!isOwn?`<div style="font-size:0.7rem;color:var(--text-muted);margin-bottom:3px;">${escapeHtml(m.displayName||'Usuario')} · ${time}</div>`:''}
+              <div class="${isOwn?'user-bubble':'msg-bubble'}">${content}</div>
+              ${isOwn?`<div class="msg-time">${time}</div>`:''}
+              ${reacts?`<div class="reactions-bar">${reacts}</div>`:''}
+              <div class="reactions-bar">
+                ${['👍','❤️','😂','🔥','🌿'].map(e=>`<span class="reaction-btn" onclick="reactMsg('${m.id}','${e}')">${e}</span>`).join('')}
+              </div>
+            </div>
+          </div>`;
+      }).join('');
+      el.scrollTop = el.scrollHeight;
+    }
+
+    window.sendMessage = async () => {
+      const input = document.getElementById('chat-input');
+      const text = input.value.trim();
+      if (!text || !currentRoomId) return;
+      input.value = '';
+
+      if (currentUser.uid === 'demo') {
+        appendDemoMsg(text); return;
+      }
+
+      const msgRef = ref(rtdb, `messages/${currentRoomId}`);
+      await push(msgRef, {
+        uid:         currentUser.uid,
+        displayName: currentUser.displayName,
+        avatar:      '🌿',
+        text, type:'text',
+        timestamp:   Date.now()
+      });
+    };
+
+    function appendDemoMsg(text) {
+      const msgs = document.getElementById('chat-messages');
+      const time = new Date().toLocaleTimeString('es-MX',{hour:'2-digit',minute:'2-digit'});
+      msgs.innerHTML += `
+        <div class="msg own">
+          <div class="msg-avatar">🌿</div>
+          <div>
+            <div class="user-bubble">${escapeHtml(text)}</div>
+            <div class="msg-time">${time}</div>
+          </div>
+        </div>`;
+      msgs.scrollTop = msgs.scrollHeight;
+    }
+
+    window.handleKey = e => { if(e.key==='Enter') window.sendMessage(); };
+
+    // ── Create / Join room ────────────────────────────
+    window.openCreateRoom = () => document.getElementById('create-modal').style.display='flex';
+    window.openJoinRoom   = () => document.getElementById('join-modal').style.display='flex';
+    window.closeModal     = id => document.getElementById(id).style.display='none';
+
+    window.createRoom = async () => {
+      const name = document.getElementById('new-room-name').value.trim();
+      const desc = document.getElementById('new-room-desc').value.trim();
+      if (!name) { toast('Escribe un nombre','warning'); return; }
+
+      const code = generateCode(6);
+      const roomData = {
+        name, desc, code, icon:'💬',
+        owner:   currentUser.uid,
+        members: 1,
+        createdAt: Date.now()
+      };
+
+      if (currentUser.uid === 'demo') {
+        toast(`Sala "${name}" creada — código: ${code}`,'success');
+        closeModal('create-modal'); return;
+      }
+
+      const roomRef = push(ref(rtdb,'rooms'));
+      await set(roomRef, roomData);
+      await set(ref(rtdb, `userRooms/${currentUser.uid}/${roomRef.key}`), roomData);
+      closeModal('create-modal');
+      toast(`Sala creada 🎉 Código: ${code}`, 'success');
+    };
+
+    window.joinRoom = async () => {
+      const code = document.getElementById('join-code').value.trim().toUpperCase();
+      if (code.length < 4) { toast('Código inválido','warning'); return; }
+
+      if (currentUser.uid === 'demo') {
+        toast(`Unido a sala con código ${code} (demo)`,'success');
+        closeModal('join-modal'); return;
+      }
+
+      // Search for room with this code
+      get(ref(rtdb,'rooms')).then(snap => {
+        let found = null;
+        snap.forEach(child => {
+          if (child.val().code === code) found = { id:child.key, ...child.val() };
+        });
+        if (!found) { toast('Sala no encontrada','error'); return; }
+        set(ref(rtdb, `userRooms/${currentUser.uid}/${found.id}`), found);
+        update(ref(rtdb,`rooms/${found.id}`),{ members: (found.members||1)+1 });
+        closeModal('join-modal');
+        toast('¡Unido a la sala! 🎉','success');
+        selectRoom(found);
+      });
+    };
+
+    window.copyCode = () => {
+      if (!currentRoomCode) return;
+      navigator.clipboard.writeText(currentRoomCode).then(()=>toast('Código copiado: '+currentRoomCode,'success'));
+    };
+
+    // ── Reactions ─────────────────────────────────────
+    window.reactMsg = async (msgId, emoji) => {
+      if (currentUser.uid==='demo') { toast(`Reaccionaste con ${emoji}`,'info'); return; }
+      const reactRef = ref(rtdb, `messages/${currentRoomId}/${msgId}/reactions/${emoji}`);
+      get(reactRef).then(snap => {
+        const cur = snap.val() || 0;
+        set(reactRef, cur + 1);
+      });
+    };
+
+    // ── Audio recording ───────────────────────────────
+    window.toggleRecording = async () => {
+      if (mediaRecorder && mediaRecorder.state==='recording') {
+        mediaRecorder.stop();
+        document.getElementById('rec-indicator').classList.remove('active');
+        document.getElementById('btn-record').textContent='🎙️';
+        return;
+      }
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({audio:true});
+        mediaRecorder = new MediaRecorder(stream);
+        audioChunks = [];
+        mediaRecorder.ondataavailable = e => audioChunks.push(e.data);
+        mediaRecorder.onstop = () => {
+          const blob = new Blob(audioChunks,{type:'audio/webm'});
+          const url  = URL.createObjectURL(blob);
+          appendAudioMsg(url);
+          stream.getTracks().forEach(t=>t.stop());
+        };
+        mediaRecorder.start();
+        document.getElementById('rec-indicator').classList.add('active');
+        document.getElementById('btn-record').textContent='⏹️';
+        toast('🎙️ Grabando audio...','info');
+      } catch(e) { toast('Sin acceso al micrófono','error'); }
+    };
+
+    function appendAudioMsg(url) {
+      const msgs = document.getElementById('chat-messages');
+      const time = new Date().toLocaleTimeString('es-MX',{hour:'2-digit',minute:'2-digit'});
+      msgs.innerHTML += `
+        <div class="msg own">
+          <div class="msg-avatar">🌿</div>
+          <div>
+            <div class="user-bubble">
+              <div class="msg-audio">
+                <span class="audio-play-btn">▶️</span>
+                <audio src="${url}" controls style="height:24px;max-width:160px;"></audio>
+              </div>
+            </div>
+            <div class="msg-time">${time}</div>
+          </div>
+        </div>`;
+      msgs.scrollTop = msgs.scrollHeight;
+    }
+
+    // ── Image sending ─────────────────────────────────
+    window.sendImage = (input) => {
+      if (!input.files[0]) return;
+      const reader = new FileReader();
+      reader.onload = e => {
+        const msgs = document.getElementById('chat-messages');
+        const time = new Date().toLocaleTimeString('es-MX',{hour:'2-digit',minute:'2-digit'});
+        msgs.innerHTML += `
+          <div class="msg own">
+            <div class="msg-avatar">🌿</div>
+            <div>
+              <div class="user-bubble">
+                <img class="msg-img" src="${e.target.result}" onclick="window.open('${e.target.result}')" />
+              </div>
+              <div class="msg-time">${time}</div>
+            </div>
+          </div>`;
+        msgs.scrollTop = msgs.scrollHeight;
+      };
+      reader.readAsDataURL(input.files[0]);
+    };
+
+    // ── Emoji picker (simple) ─────────────────────────
+    window.showEmojiPicker = () => {
+      const emojis = ['😊','😂','❤️','🔥','🌿','👍','🙌','🎉','🤔','😎','🌍','♻️'];
+      const e = prompt(`Elige un emoji: ${emojis.join(' ')}`);
+      if (e) {
+        const input = document.getElementById('chat-input');
+        input.value += e; input.focus();
+      }
+    };
+
+    // ── Utils ──────────────────────────────────────────
+    function escapeHtml(s) {
+      return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    }
+    function fmtSecs(s) {
+      return `${Math.floor(s/60)}:${(s%60).toString().padStart(2,'0')}`;
+    }
+  </script>
+</body>
+</html>

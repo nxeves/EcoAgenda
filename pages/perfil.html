@@ -1,0 +1,510 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>EcoAgenda — Perfil</title>
+  <link rel="stylesheet" href="../css/global.css" />
+  <link rel="stylesheet" href="../css/componentes.css" />
+  <style>
+    .profile-layout { display:grid; grid-template-columns:320px 1fr; gap:20px; }
+
+    .profile-card {
+      background:var(--bg-card); border:1px solid var(--border-soft);
+      border-radius:var(--r-xl); padding:32px 24px; text-align:center;
+      position:relative; overflow:hidden;
+    }
+    .profile-card::before {
+      content:'';
+      position:absolute; top:0; left:0; right:0; height:80px;
+      background:linear-gradient(135deg, var(--green-900), var(--green-800));
+    }
+
+    .avatar-wrap { position:relative; margin-bottom:16px; z-index:1; }
+    .avatar-main {
+      width:100px; height:100px; border-radius:50%; object-fit:cover;
+      border:3px solid var(--green-500);
+      box-shadow:0 0 30px rgba(34,197,94,0.35);
+      cursor:pointer;
+    }
+    .avatar-overlay {
+      position:absolute; inset:0; border-radius:50%;
+      background:rgba(0,0,0,0.5);
+      display:flex; align-items:center; justify-content:center;
+      font-size:1.2rem; opacity:0; transition:opacity var(--t-mid);
+      cursor:pointer;
+    }
+    .avatar-wrap:hover .avatar-overlay { opacity:1; }
+
+    .user-name {
+      font-family:var(--font-display); font-size:1.3rem; font-weight:900;
+      margin-bottom:4px;
+    }
+    .user-handle { color:var(--text-muted); font-size:0.8rem; margin-bottom:12px; }
+    .user-school { color:var(--text-secondary); font-size:0.78rem; margin-bottom:16px; }
+
+    .xp-section { margin:16px 0; }
+    .xp-label { display:flex; justify-content:space-between; font-size:0.72rem; color:var(--text-muted); margin-bottom:6px; }
+
+    .stats-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:10px; margin:16px 0; }
+
+    .edit-btn { width:100%; margin-top:12px; }
+
+    /* Right column */
+    .right-tabs { display:flex; gap:6px; margin-bottom:20px; }
+    .ptab {
+      flex:1; padding:9px; border-radius:var(--r-full);
+      background:transparent; border:1.5px solid var(--border-soft);
+      color:var(--text-muted); font-family:var(--font-body);
+      font-size:0.8rem; font-weight:700; cursor:pointer;
+      transition:all var(--t-mid); text-align:center;
+    }
+    .ptab.active { background:rgba(34,197,94,0.1); border-color:var(--green-500); color:var(--green-300); }
+
+    .ptab-pane { display:none; }
+    .ptab-pane.visible { display:block; }
+
+    /* Avatar eco builder */
+    .eco-avatar-builder {
+      display:flex; flex-direction:column; align-items:center; gap:20px;
+    }
+    .eco-avatar-preview {
+      width:150px; height:150px; border-radius:50%;
+      background:linear-gradient(135deg,var(--green-800),var(--green-600));
+      display:flex; align-items:center; justify-content:center;
+      font-size:5rem; border:3px solid var(--green-500);
+      box-shadow:0 0 40px rgba(34,197,94,0.3);
+      position:relative;
+    }
+    .eco-badge-overlay {
+      position:absolute; bottom:0; right:0;
+      width:40px; height:40px; border-radius:50%;
+      background:var(--bg-elevated); border:2px solid var(--green-500);
+      display:flex; align-items:center; justify-content:center; font-size:1.2rem;
+    }
+
+    .accessories-section { width:100%; }
+    .acc-category { margin-bottom:20px; }
+    .acc-cat-title { font-size:0.8rem; font-weight:700; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.5px; margin-bottom:10px; }
+    .acc-grid { display:grid; grid-template-columns:repeat(5,1fr); gap:8px; }
+    .acc-item {
+      background:var(--bg-elevated); border:1.5px solid var(--border-soft);
+      border-radius:var(--r-md); padding:10px 6px;
+      text-align:center; cursor:pointer; transition:all var(--t-mid);
+      font-size:1.4rem; position:relative;
+    }
+    .acc-item:hover { border-color:var(--green-500); transform:scale(1.08); }
+    .acc-item.locked { opacity:0.3; filter:grayscale(1); cursor:not-allowed; }
+    .acc-item.equipped { border-color:var(--accent-lime); background:rgba(163,230,53,0.1); }
+    .acc-item .acc-pts { font-size:0.55rem; color:var(--text-muted); margin-top:2px; }
+    .lock-icon { position:absolute; top:2px; right:3px; font-size:0.65rem; }
+
+    /* Achievement list */
+    .achievement-item {
+      display:flex; align-items:center; gap:14px; padding:14px 16px;
+      background:var(--bg-elevated); border-radius:var(--r-md);
+      border-left:3px solid var(--border-soft); margin-bottom:8px;
+      transition:all var(--t-mid);
+    }
+    .achievement-item.earned { border-left-color:var(--green-500); }
+    .achievement-item.earned .ach-icon { filter:none; }
+    .achievement-item:not(.earned) { opacity:0.5; filter:grayscale(0.7); }
+    .ach-icon { font-size:1.8rem; flex-shrink:0; }
+    .ach-name { font-weight:700; font-size:0.87rem; }
+    .ach-desc { font-size:0.72rem; color:var(--text-muted); }
+
+    /* Settings */
+    .setting-row {
+      display:flex; align-items:center; justify-content:space-between;
+      padding:14px 0; border-bottom:1px solid var(--border-soft);
+    }
+    .setting-label { font-size:0.88rem; font-weight:600; }
+    .setting-sub { font-size:0.72rem; color:var(--text-muted); }
+    .toggle {
+      width:44px; height:24px; background:var(--bg-elevated);
+      border:2px solid var(--border-mid); border-radius:12px;
+      cursor:pointer; position:relative; transition:background var(--t-mid);
+    }
+    .toggle::after {
+      content:''; position:absolute; top:2px; left:2px;
+      width:16px; height:16px; border-radius:50%;
+      background:var(--text-muted); transition:all var(--t-mid);
+    }
+    .toggle.on { background:var(--green-600); border-color:var(--green-500); }
+    .toggle.on::after { left:22px; background:white; }
+
+    @media(max-width:900px) { .profile-layout{grid-template-columns:1fr;} }
+  </style>
+</head>
+<body>
+  <canvas id="bg-canvas"></canvas>
+  <div id="toast-container"></div>
+
+  <nav class="eco-nav">
+    <div class="container">
+      <a href="inicio.html" class="nav-logo"><div class="logo-dot"></div>EcoAgenda</a>
+      <ul class="nav-links">
+        <li><a href="inicio.html"><span class="nav-icon">🏠</span>Inicio</a></li>
+        <li><a href="agenda.html"><span class="nav-icon">📝</span>Agenda</a></li>
+        <li><a href="reciclaje.html"><span class="nav-icon">♻️</span>Recicla</a></li>
+        <li><a href="chat.html"><span class="nav-icon">💬</span>Chat</a></li>
+        <li><a href="juego.html"><span class="nav-icon">🎮</span>Juego</a></li>
+        <li><a href="ranking.html"><span class="nav-icon">🏆</span>Ranking</a></li>
+        <li><a href="ecobot.html"><span class="nav-icon">🤖</span>EcoBot</a></li>
+        <li><a href="perfil.html" class="active"><span class="nav-icon">👤</span>Perfil</a></li>
+      </ul>
+      <div class="nav-user">
+        <img id="nav-avatar" src="https://ui-avatars.com/api/?name=Eco&background=0b5022&color=86efac&bold=true" class="nav-avatar" />
+      </div>
+    </div>
+  </nav>
+
+  <div class="page-wrap main-content">
+    <div class="container">
+
+      <div class="profile-layout">
+        <!-- Left: Profile card -->
+        <div>
+          <div class="profile-card slide-up">
+            <div class="avatar-wrap" style="margin-top:24px;">
+              <img id="profile-avatar" class="avatar-main"
+                src="https://ui-avatars.com/api/?name=Eco&background=0b5022&color=86efac&bold=true&size=200"
+                onclick="document.getElementById('av-upload').click()" />
+              <div class="avatar-overlay" onclick="document.getElementById('av-upload').click()">📷</div>
+              <input type="file" id="av-upload" accept="image/*" style="display:none" onchange="changeAvatar(this)" />
+            </div>
+
+            <div class="user-name" id="profile-name">EcoHéroe</div>
+            <div class="user-handle" id="profile-handle">@ecousuario</div>
+            <div class="user-school" id="profile-school">🏫 Mi escuela</div>
+
+            <div>
+              <span class="badge badge-green" id="profile-rank">🌱 Semilla</span>
+            </div>
+
+            <div class="xp-section">
+              <div class="xp-label">
+                <span>Progreso al siguiente rango</span>
+                <span id="xp-pct">0%</span>
+              </div>
+              <div class="xp-bar-wrap"><div class="xp-bar" id="xp-bar" style="width:0%"></div></div>
+            </div>
+
+            <div class="stats-grid">
+              <div class="stat-chip">
+                <div class="stat-value" id="p-puntos">0</div>
+                <div class="stat-label">Puntos</div>
+              </div>
+              <div class="stat-chip">
+                <div class="stat-value" id="p-tareas">0</div>
+                <div class="stat-label">Tareas</div>
+              </div>
+              <div class="stat-chip">
+                <div class="stat-value" id="p-racha">1</div>
+                <div class="stat-label">Racha</div>
+              </div>
+            </div>
+
+            <button class="btn btn-secondary edit-btn" onclick="openEdit()">✏️ Editar perfil</button>
+            <button class="btn btn-danger btn-sm" style="width:100%;margin-top:8px;" onclick="logout()">Cerrar sesión</button>
+          </div>
+        </div>
+
+        <!-- Right -->
+        <div>
+          <div class="right-tabs">
+            <button class="ptab active" onclick="switchTab('avatar',this)">🎨 Avatar</button>
+            <button class="ptab" onclick="switchTab('logros',this)">🏅 Logros</button>
+            <button class="ptab" onclick="switchTab('ajustes',this)">⚙️ Ajustes</button>
+          </div>
+
+          <!-- AVATAR TAB -->
+          <div class="ptab-pane visible" id="ptab-avatar">
+            <div class="card">
+              <div class="eco-avatar-builder">
+                <div class="eco-avatar-preview" id="eco-preview">
+                  🌱
+                  <div class="eco-badge-overlay" id="eco-badge">⭐</div>
+                </div>
+
+                <div class="accessories-section">
+                  <div class="acc-category">
+                    <div class="acc-cat-title">🌿 Personaje base</div>
+                    <div class="acc-grid">
+                      <div class="acc-item equipped" onclick="setBase('🌱')" id="base-seed">🌱<div class="acc-pts">gratis</div></div>
+                      <div class="acc-item" onclick="setBase('🌿')" id="base-plant">🌿<div class="acc-pts">200 pts</div></div>
+                      <div class="acc-item locked" id="base-tree">🌳<div class="acc-pts">600 pts</div><div class="lock-icon">🔒</div></div>
+                      <div class="acc-item locked" id="base-guardian">🌍<div class="acc-pts">1500 pts</div><div class="lock-icon">🔒</div></div>
+                      <div class="acc-item locked" id="base-unicorn">🦄<div class="acc-pts">999 pts</div><div class="lock-icon">🔒</div></div>
+                    </div>
+                  </div>
+
+                  <div class="acc-category">
+                    <div class="acc-cat-title">🎩 Accesorios</div>
+                    <div class="acc-grid">
+                      <div class="acc-item" onclick="setAccessory('🌺')">🌺<div class="acc-pts">gratis</div></div>
+                      <div class="acc-item" onclick="setAccessory('⭐')">⭐<div class="acc-pts">gratis</div></div>
+                      <div class="acc-item" onclick="setAccessory('🌈')">🌈<div class="acc-pts">100 pts</div></div>
+                      <div class="acc-item locked">🎭<div class="acc-pts">300 pts</div><div class="lock-icon">🔒</div></div>
+                      <div class="acc-item locked">👑<div class="acc-pts">800 pts</div><div class="lock-icon">🔒</div></div>
+                    </div>
+                  </div>
+
+                  <div class="acc-category">
+                    <div class="acc-cat-title">🎨 Color de fondo</div>
+                    <div style="display:flex;gap:8px;flex-wrap:wrap;">
+                      <div onclick="setBg('#0b5022')" style="width:36px;height:36px;border-radius:50%;background:#0b5022;cursor:pointer;border:2px solid var(--green-500);"></div>
+                      <div onclick="setBg('#1a237e')" style="width:36px;height:36px;border-radius:50%;background:#1a237e;cursor:pointer;border:2px solid transparent;"></div>
+                      <div onclick="setBg('#4a0022')" style="width:36px;height:36px;border-radius:50%;background:#4a0022;cursor:pointer;border:2px solid transparent;"></div>
+                      <div onclick="setBg('#1a3a1a')" style="width:36px;height:36px;border-radius:50%;background:#1a3a1a;cursor:pointer;border:2px solid transparent;"></div>
+                      <div onclick="setBg('#2d1b00')" style="width:36px;height:36px;border-radius:50%;background:#2d1b00;cursor:pointer;border:2px solid transparent;"></div>
+                    </div>
+                  </div>
+
+                  <button class="btn btn-primary" style="width:100%;margin-top:16px;" onclick="saveAvatar()">💾 Guardar avatar</button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- LOGROS TAB -->
+          <div class="ptab-pane" id="ptab-logros">
+            <div class="card">
+              <h3 style="font-family:var(--font-display);margin-bottom:16px;">🏅 Mis logros</h3>
+              <div id="achievements-list"></div>
+            </div>
+          </div>
+
+          <!-- AJUSTES TAB -->
+          <div class="ptab-pane" id="ptab-ajustes">
+            <div class="card">
+              <h3 style="font-family:var(--font-display);margin-bottom:16px;">⚙️ Ajustes</h3>
+
+              <div class="setting-row">
+                <div><div class="setting-label">🔔 Notificaciones</div><div class="setting-sub">Recordatorios de tareas</div></div>
+                <div class="toggle on" id="tog-notif" onclick="toggleSetting(this,'notif')"></div>
+              </div>
+              <div class="setting-row">
+                <div><div class="setting-label">🔊 Sonidos del juego</div><div class="setting-sub">Efectos de audio</div></div>
+                <div class="toggle on" id="tog-sound" onclick="toggleSetting(this,'sound')"></div>
+              </div>
+              <div class="setting-row">
+                <div><div class="setting-label">🌙 Modo oscuro</div><div class="setting-sub">Siempre activo en EcoAgenda</div></div>
+                <div class="toggle on" id="tog-dark" style="cursor:not-allowed;opacity:0.5;"></div>
+              </div>
+              <div class="setting-row">
+                <div><div class="setting-label">🌍 Idioma</div><div class="setting-sub">Español</div></div>
+                <select class="input-field" style="width:120px;padding:6px 10px;">
+                  <option>Español</option>
+                  <option>English</option>
+                </select>
+              </div>
+              <div class="setting-row" style="border:none;">
+                <div><div class="setting-label">🔗 Compartir perfil</div><div class="setting-sub">Link público</div></div>
+                <button class="btn btn-secondary btn-sm" onclick="copyProfileLink()">📋 Copiar</button>
+              </div>
+
+              <div class="divider"></div>
+              <button class="btn btn-danger" style="width:100%;" onclick="logout()">🚪 Cerrar sesión</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Edit Profile Modal -->
+  <div class="modal-overlay" id="edit-modal" style="display:none;">
+    <div class="modal-box">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;">
+        <div class="modal-title">✏️ Editar perfil</div>
+        <button class="btn btn-ghost btn-sm" onclick="closeModal()">✕</button>
+      </div>
+      <div class="input-group">
+        <label class="input-label">Nombre</label>
+        <input class="input-field" type="text" id="edit-name" />
+      </div>
+      <div class="input-group">
+        <label class="input-label">Nombre de usuario</label>
+        <input class="input-field" type="text" id="edit-username" />
+      </div>
+      <div class="input-group">
+        <label class="input-label">Escuela</label>
+        <input class="input-field" type="text" id="edit-school" />
+      </div>
+      <button class="btn btn-primary" style="width:100%;margin-top:8px;" onclick="saveProfile()">Guardar cambios</button>
+    </div>
+  </div>
+
+  <script type="module">
+    import { initParticles, toast, getRank, getRankProgress } from '../js/utils.js';
+    import { auth, db, storage } from '../js/firebase.js';
+    import { onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+    import { doc, getDoc, updateDoc } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+    import { ref as storageRef, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-storage.js";
+
+    initParticles();
+
+    let userData = null; let currentUser = null;
+    let selectedBase='🌱', selectedAcc='⭐', selectedBg='#0b5022';
+
+    const ACHIEVEMENTS = [
+      { icon:'🌱', name:'Primera semilla',        desc:'Crea tu cuenta en EcoAgenda',          earned:true  },
+      { icon:'📝', name:'Primera tarea',           desc:'Agrega tu primera tarea a la agenda',  earned:true  },
+      { icon:'♻️', name:'Reciclador novato',       desc:'Busca tu primer objeto en reciclaje',  earned:true  },
+      { icon:'🎮', name:'Jugador eco',             desc:'Completa una partida del juego',        earned:true  },
+      { icon:'💬', name:'Sociable verde',          desc:'Envía tu primer mensaje en el chat',    earned:false },
+      { icon:'🏆', name:'Top 10 global',           desc:'Entra al top 10 del ranking',           earned:false },
+      { icon:'🌍', name:'Guardián del planeta',    desc:'Alcanza 1500 puntos',                   earned:false },
+      { icon:'🔥', name:'Racha de fuego',          desc:'10 respuestas correctas seguidas',      earned:false },
+      { icon:'📷', name:'Fotógrafo escolar',       desc:'Escanea tu horario con la cámara',      earned:false },
+      { icon:'🤖', name:'Amigo de EcoBot',         desc:'Chatea con EcoBot 10 veces',            earned:false },
+    ];
+
+    onAuthStateChanged(auth, async (user) => {
+      if (!user) {
+        if (!sessionStorage.getItem('eco_demo')) { location.href='../index.html'; return; }
+        const u = JSON.parse(sessionStorage.getItem('eco_user')||'{}');
+        currentUser = { uid:'demo' };
+        userData = { displayName:u.displayName||'Demo', puntos:u.puntos||450, username:'demo', escuela:'EcoSchool' };
+        renderProfile();
+        return;
+      }
+      currentUser = user;
+      const snap = await getDoc(doc(db,'users',user.uid));
+      userData = snap.exists() ? snap.data() : { displayName:user.displayName||'EcoHéroe', puntos:0 };
+      renderProfile();
+    });
+
+    function renderProfile() {
+      const { displayName, puntos=0, username, escuela, photoURL } = userData;
+      document.getElementById('profile-name').textContent   = displayName;
+      document.getElementById('profile-handle').textContent = '@' + (username||'ecousuario');
+      document.getElementById('profile-school').textContent = escuela ? '🏫 '+escuela : '';
+      document.getElementById('p-puntos').textContent = puntos;
+
+      if (photoURL) {
+        document.getElementById('profile-avatar').src = photoURL;
+        document.getElementById('nav-avatar').src = photoURL;
+      }
+
+      const rank = getRank(puntos); const pct = getRankProgress(puntos);
+      document.getElementById('profile-rank').textContent = rank.icon + ' ' + rank.name;
+      document.getElementById('xp-pct').textContent = pct + '%';
+      document.getElementById('xp-bar').style.width = pct + '%';
+
+      // Unlock accessories based on points
+      unlockByPoints(puntos);
+
+      // Render achievements
+      document.getElementById('achievements-list').innerHTML = ACHIEVEMENTS.map(a=>`
+        <div class="achievement-item ${a.earned?'earned':''}">
+          <div class="ach-icon">${a.icon}</div>
+          <div>
+            <div class="ach-name">${a.name}</div>
+            <div class="ach-desc">${a.desc}</div>
+          </div>
+          ${a.earned?'<span class="badge badge-green">✓</span>':'<span class="badge" style="opacity:0.4">🔒</span>'}
+        </div>`).join('');
+
+      // Load settings
+      const s = JSON.parse(localStorage.getItem('eco_settings')||'{}');
+      if (s.sound===false) document.getElementById('tog-sound').classList.remove('on');
+      if (s.notif===false) document.getElementById('tog-notif').classList.remove('on');
+
+      // Eco avatar preview based on rank
+      const avatarMap = { semilla:'🌱', planta:'🌿', árbol:'🌳', guardián:'🌍' };
+      selectedBase = avatarMap[rank.name.toLowerCase()] || '🌱';
+      document.getElementById('eco-preview').querySelector('div:not(.eco-badge-overlay)');
+      document.getElementById('eco-preview').firstChild.textContent = selectedBase;
+    }
+
+    function unlockByPoints(pts) {
+      if (pts >= 200) { document.getElementById('base-plant')?.classList.remove('locked'); document.getElementById('base-plant')?.querySelector('.lock-icon')?.remove(); }
+      if (pts >= 600) { document.getElementById('base-tree')?.classList.remove('locked');  document.getElementById('base-tree')?.querySelector('.lock-icon')?.remove();  }
+      if (pts >= 1500){ document.getElementById('base-guardian')?.classList.remove('locked'); document.getElementById('base-guardian')?.querySelector('.lock-icon')?.remove(); }
+    }
+
+    window.setBase = (emoji) => {
+      selectedBase = emoji;
+      document.getElementById('eco-preview').innerHTML = emoji + `<div class="eco-badge-overlay">${selectedAcc}</div>`;
+      document.querySelectorAll('[id^="base-"]').forEach(el=>el.classList.remove('equipped'));
+      event.target.closest('.acc-item')?.classList.add('equipped');
+    };
+    window.setAccessory = (emoji) => {
+      selectedAcc = emoji;
+      document.getElementById('eco-badge').textContent = emoji;
+    };
+    window.setBg = (color) => {
+      selectedBg = color;
+      document.getElementById('eco-preview').style.background = `linear-gradient(135deg,${color},${color}dd)`;
+    };
+    window.saveAvatar = () => {
+      localStorage.setItem('eco_avatar', JSON.stringify({ base:selectedBase, acc:selectedAcc, bg:selectedBg }));
+      toast('Avatar guardado 🎨','success');
+    };
+
+    window.switchTab = (tab, btn) => {
+      document.querySelectorAll('.ptab').forEach(b=>b.classList.remove('active'));
+      document.querySelectorAll('.ptab-pane').forEach(p=>p.classList.remove('visible'));
+      btn.classList.add('active');
+      document.getElementById('ptab-'+tab).classList.add('visible');
+    };
+
+    window.openEdit = () => {
+      document.getElementById('edit-name').value    = userData.displayName || '';
+      document.getElementById('edit-username').value= userData.username    || '';
+      document.getElementById('edit-school').value  = userData.escuela     || '';
+      document.getElementById('edit-modal').style.display='flex';
+    };
+    window.closeModal = () => document.getElementById('edit-modal').style.display='none';
+
+    window.saveProfile = async () => {
+      const name   = document.getElementById('edit-name').value.trim();
+      const uname  = document.getElementById('edit-username').value.trim();
+      const school = document.getElementById('edit-school').value.trim();
+      if (!name) { toast('El nombre es obligatorio','warning'); return; }
+      userData.displayName=name; userData.username=uname; userData.escuela=school;
+      if (currentUser.uid !== 'demo') {
+        try { await updateDoc(doc(db,'users',currentUser.uid),{ displayName:name, username:uname, escuela:school }); } catch(e){}
+      }
+      renderProfile(); closeModal();
+      toast('Perfil actualizado ✅','success');
+    };
+
+    window.changeAvatar = async (input) => {
+      if (!input.files[0]) return;
+      const url = URL.createObjectURL(input.files[0]);
+      document.getElementById('profile-avatar').src = url;
+      document.getElementById('nav-avatar').src = url;
+      if (currentUser.uid !== 'demo') {
+        try {
+          const sRef = storageRef(storage, `avatars/${currentUser.uid}`);
+          await uploadBytes(sRef, input.files[0]);
+          const photoURL = await getDownloadURL(sRef);
+          await updateDoc(doc(db,'users',currentUser.uid),{ photoURL });
+          toast('Foto actualizada ✅','success');
+        } catch(e) { toast('Error al subir foto','error'); }
+      } else { toast('Foto actualizada (demo)','info'); }
+    };
+
+    window.toggleSetting = (el, key) => {
+      el.classList.toggle('on');
+      const s = JSON.parse(localStorage.getItem('eco_settings')||'{}');
+      s[key] = el.classList.contains('on');
+      localStorage.setItem('eco_settings', JSON.stringify(s));
+    };
+
+    window.copyProfileLink = () => {
+      navigator.clipboard.writeText(window.location.href).then(()=>toast('Link copiado','success'));
+    };
+
+    window.logout = async () => {
+      if (!confirm('¿Cerrar sesión?')) return;
+      sessionStorage.clear();
+      if (currentUser.uid !== 'demo') { try { await signOut(auth); } catch(e){} }
+      location.href='../index.html';
+    };
+  </script>
+</body>
+</html>

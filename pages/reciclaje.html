@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>EcoAgenda — Reciclaje</title>
+  <link rel="stylesheet" href="../css/global.css" />
+  <link rel="stylesheet" href="../css/componentes.css" />
+  <style>
+    .rec-layout { display:grid; grid-template-columns:1fr 320px; gap:20px; }
+
+    .bins-row { display:grid; grid-template-columns:repeat(6,1fr); gap:12px; margin-bottom:24px; }
+    .bin-card {
+      background:var(--bg-card); border:1.5px solid var(--border-soft);
+      border-radius:var(--r-lg); padding:16px 8px;
+      text-align:center; cursor:pointer; transition:all var(--t-mid);
+    }
+    .bin-card:hover { transform:translateY(-4px); box-shadow:var(--shadow-glow); }
+    .bin-card.selected { border-width:2px; }
+    .bin-card .bin-emoji { font-size:2rem; display:block; margin-bottom:6px; }
+    .bin-card .bin-label { font-size:0.72rem; font-weight:700; color:var(--text-secondary); }
+
+    .search-result {
+      background:var(--bg-card); border:1px solid var(--border-soft);
+      border-radius:var(--r-lg); padding:24px;
+      display:none;
+    }
+    .search-result.visible { display:block; }
+
+    .result-header { display:flex; align-items:center; gap:14px; margin-bottom:16px; }
+    .result-icon { font-size:3rem; }
+    .result-title { font-family:var(--font-display); font-weight:800; font-size:1.2rem; }
+    .result-bin-label { font-size:0.8rem; color:var(--text-muted); margin-top:2px; }
+
+    .result-steps { list-style:none; display:flex; flex-direction:column; gap:8px; margin-top:16px; }
+    .result-steps li { display:flex; align-items:flex-start; gap:10px; font-size:0.85rem; line-height:1.5; }
+    .result-steps li::before { content:'→'; color:var(--green-400); flex-shrink:0; margin-top:1px; }
+
+    .weekly-challenges { display:flex; flex-direction:column; gap:12px; }
+    .challenge-card { background:var(--bg-card); border:1px solid var(--border-soft); border-radius:var(--r-lg); padding:18px; }
+
+    .eco-tips { display:flex; flex-direction:column; gap:8px; }
+    .eco-tip {
+      display:flex; align-items:flex-start; gap:10px; padding:12px 14px;
+      background:var(--bg-elevated); border-radius:var(--r-md);
+      font-size:0.82rem; line-height:1.5;
+      border-left:3px solid var(--green-600);
+    }
+
+    @media(max-width:900px) { .rec-layout{grid-template-columns:1fr;} .bins-row{grid-template-columns:repeat(3,1fr);} }
+  </style>
+</head>
+<body>
+  <canvas id="bg-canvas"></canvas>
+  <div id="toast-container"></div>
+
+  <nav class="eco-nav">
+    <div class="container">
+      <a href="inicio.html" class="nav-logo"><div class="logo-dot"></div>EcoAgenda</a>
+      <ul class="nav-links">
+        <li><a href="inicio.html"><span class="nav-icon">🏠</span>Inicio</a></li>
+        <li><a href="agenda.html"><span class="nav-icon">📝</span>Agenda</a></li>
+        <li><a href="reciclaje.html" class="active"><span class="nav-icon">♻️</span>Recicla</a></li>
+        <li><a href="chat.html"><span class="nav-icon">💬</span>Chat</a></li>
+        <li><a href="juego.html"><span class="nav-icon">🎮</span>Juego</a></li>
+        <li><a href="ranking.html"><span class="nav-icon">🏆</span>Ranking</a></li>
+        <li><a href="ecobot.html"><span class="nav-icon">🤖</span>EcoBot</a></li>
+        <li><a href="perfil.html"><span class="nav-icon">👤</span>Perfil</a></li>
+      </ul>
+      <div class="nav-user">
+        <img id="nav-avatar" src="https://ui-avatars.com/api/?name=Eco&background=0b5022&color=86efac&bold=true" class="nav-avatar" />
+      </div>
+    </div>
+  </nav>
+
+  <div class="page-wrap main-content">
+    <div class="container">
+
+      <h1 class="section-title">♻️ Reciclaje inteligente</h1>
+      <p class="section-subtitle">Aprende cómo reciclar cualquier objeto correctamente</p>
+
+      <!-- Bin categories -->
+      <div class="bins-row stagger">
+        <div class="bin-card" onclick="filterByBin('papel')" id="bin-papel">
+          <span class="bin-emoji">📰</span>
+          <div class="bin-label" style="color:var(--accent-cyan)">Papel/Cartón</div>
+        </div>
+        <div class="bin-card" onclick="filterByBin('plastico')" id="bin-plastico">
+          <span class="bin-emoji">🥤</span>
+          <div class="bin-label" style="color:var(--accent-amber)">Plástico</div>
+        </div>
+        <div class="bin-card" onclick="filterByBin('vidrio')" id="bin-vidrio">
+          <span class="bin-emoji">🍾</span>
+          <div class="bin-label" style="color:var(--green-300)">Vidrio</div>
+        </div>
+        <div class="bin-card" onclick="filterByBin('organico')" id="bin-organico">
+          <span class="bin-emoji">🍎</span>
+          <div class="bin-label" style="color:var(--accent-lime)">Orgánico</div>
+        </div>
+        <div class="bin-card" onclick="filterByBin('metal')" id="bin-metal">
+          <span class="bin-emoji">🥫</span>
+          <div class="bin-label" style="color:var(--accent-violet)">Metal</div>
+        </div>
+        <div class="bin-card" onclick="filterByBin('general')" id="bin-general">
+          <span class="bin-emoji">🗑️</span>
+          <div class="bin-label" style="color:var(--accent-rose)">No reciclable</div>
+        </div>
+      </div>
+
+      <!-- Search -->
+      <div class="search-box" style="max-width:600px;margin-bottom:24px;">
+        <input type="text" id="recycle-search" placeholder="🔍 Busca qué reciclar: botella, papel, pilas..." />
+        <button onclick="searchObject()">Buscar</button>
+      </div>
+
+      <div class="rec-layout">
+        <div>
+          <!-- Search result -->
+          <div class="search-result" id="search-result">
+            <div class="result-header">
+              <div class="result-icon" id="res-icon">♻️</div>
+              <div>
+                <div class="result-title" id="res-title">Resultado</div>
+                <div class="result-bin-label" id="res-bin">—</div>
+              </div>
+              <div style="margin-left:auto;" id="res-badge"></div>
+            </div>
+            <p id="res-desc" style="font-size:0.87rem;color:var(--text-secondary);line-height:1.7;"></p>
+            <ul class="result-steps" id="res-steps"></ul>
+          </div>
+
+          <!-- Object grid -->
+          <div id="items-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:12px;margin-top:16px;">
+          </div>
+        </div>
+
+        <!-- Sidebar -->
+        <div style="display:flex;flex-direction:column;gap:16px;">
+          <!-- Weekly challenges -->
+          <div class="card">
+            <h3 style="font-family:var(--font-display);font-size:1rem;margin-bottom:14px;">🎯 Retos semanales</h3>
+            <div class="weekly-challenges" id="challenges-list"></div>
+          </div>
+
+          <!-- Eco tips -->
+          <div class="card">
+            <h3 style="font-family:var(--font-display);font-size:1rem;margin-bottom:14px;">💡 Tips ecológicos</h3>
+            <div class="eco-tips" id="tips-list"></div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <script type="module">
+    import { initParticles, toast } from '../js/utils.js';
+    import { auth } from '../js/firebase.js';
+    import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+
+    initParticles();
+    onAuthStateChanged(auth, u => { if(!u&&!sessionStorage.getItem('eco_demo')) location.href='../index.html'; });
+
+    const ITEMS = [
+      { name:'Botella PET',    bin:'plastico', icon:'🥤', desc:'Aplasta antes de tirar. Sin tapas.' },
+      { name:'Papel periódico',bin:'papel',    icon:'📰', desc:'Agrupar y atar.' },
+      { name:'Lata de aluminio',bin:'metal',   icon:'🥫', desc:'Enjuagar y aplastar.' },
+      { name:'Cáscara de fruta',bin:'organico',icon:'🍌', desc:'Compostaje ideal.' },
+      { name:'Botella de vidrio',bin:'vidrio', icon:'🍾', desc:'Limpiar y sin tapas de metal.' },
+      { name:'Cartón de leche', bin:'papel',   icon:'🥛', desc:'Enjuagar y abrir completamente.' },
+      { name:'Pila usada',      bin:'general', icon:'🔋', desc:'Llevar a punto limpio.' },
+      { name:'Caja de cartón',  bin:'papel',   icon:'📦', desc:'Doblar para ahorrar espacio.' },
+      { name:'Bolsa plástica',  bin:'plastico',icon:'🛍️', desc:'Evitar su uso; si la tienes, recícla.' },
+      { name:'Restos de comida',bin:'organico',icon:'🍲', desc:'Ideal para compost.' },
+      { name:'Lata de pintura', bin:'general', icon:'🪣', desc:'Punto limpio especial.' },
+      { name:'Revista',         bin:'papel',   icon:'📚', desc:'Sin grapas metálicas.' },
+    ];
+
+    const BIN_CONFIG = {
+      papel:    { label:'Contenedor Azul',    color:'var(--accent-cyan)',   badge:'badge-cyan'   },
+      plastico: { label:'Contenedor Amarillo',color:'var(--accent-amber)',  badge:'badge-amber'  },
+      vidrio:   { label:'Contenedor Verde',   color:'var(--green-300)',     badge:'badge-green'  },
+      organico: { label:'Contenedor Marrón',  color:'var(--accent-lime)',   badge:'badge-lime'   },
+      metal:    { label:'Contenedor Lila',    color:'var(--accent-violet)', badge:'badge-violet' },
+      general:  { label:'Contenedor Gris',    color:'var(--accent-rose)',   badge:'badge-rose'   },
+    };
+
+    const STEPS = {
+      plastico: ['Vaciar completamente el envase','Enjuagar con agua','Aplastar para reducir volumen','Quitar tapas o etiquetas metálicas','Depositar en el contenedor amarillo'],
+      papel:    ['Asegurarte de que esté seco','Eliminar grapas o clips metálicos','Doblar o apilar para ahorrar espacio','Depositar en el contenedor azul'],
+      vidrio:   ['Vaciar y enjuagar el recipiente','Quitar tapas metálicas','No romper — depositar entero','Depositar en el contenedor verde'],
+      organico: ['Separar de otros residuos','Usar bolsa biodegradable','Ideal para hacer compost en casa','Depositar en el contenedor marrón'],
+      metal:    ['Vaciar y enjuagar','Aplastar levemente','Depositar en el contenedor lila o de metales'],
+      general:  ['No mezclar con reciclables','Llevar a punto limpio si es peligroso','Depositar en la basura gris general'],
+    };
+
+    const CHALLENGES = [
+      { title:'Recicla 5 botellas de plástico',icon:'🥤', pts:50, progress:2, total:5 },
+      { title:'Separa papel y cartón 3 días',  icon:'📰', pts:30, progress:1, total:3 },
+      { title:'Deposita 3 latas de metal',     icon:'🥫', pts:40, progress:0, total:3 },
+      { title:'Crea compost con restos orgánicos',icon:'🍂',pts:60,progress:1,total:1 },
+    ];
+
+    const TIPS = [
+      '🚰 Enjuaga siempre los envases antes de reciclarlos',
+      '🛍️ Usa bolsas de tela reutilizables en el supermercado',
+      '🔋 Las pilas y electrónicos van a puntos limpios especiales',
+      '♻️ El reciclaje correcto ahorra energía y reduce CO₂',
+      '🌱 Compostar residuos orgánicos enriquece la tierra',
+    ];
+
+    function renderItems(list) {
+      const g = document.getElementById('items-grid');
+      g.innerHTML = list.map(item => `
+        <div class="recycle-item" onclick="showItem('${item.name}')">
+          <div class="recycle-icon">${item.icon}</div>
+          <div style="font-size:0.78rem;font-weight:700;">${item.name}</div>
+          <div style="font-size:0.7rem;color:var(--text-muted)">${BIN_CONFIG[item.bin].label}</div>
+        </div>`).join('');
+    }
+
+    window.filterByBin = (bin) => {
+      document.querySelectorAll('.bin-card').forEach(c=>c.classList.remove('selected'));
+      const bc = document.getElementById('bin-'+bin);
+      if (bc) { bc.classList.add('selected'); const cfg=BIN_CONFIG[bin]; bc.style.borderColor=cfg.color; }
+      renderItems(ITEMS.filter(i=>i.bin===bin));
+    };
+
+    window.showItem = (name) => {
+      const item = ITEMS.find(i=>i.name===name);
+      if (!item) return;
+      const cfg = BIN_CONFIG[item.bin];
+      document.getElementById('res-icon').textContent = item.icon;
+      document.getElementById('res-title').textContent = item.name;
+      document.getElementById('res-bin').textContent = cfg.label;
+      document.getElementById('res-desc').textContent = item.desc;
+      document.getElementById('res-badge').innerHTML = `<span class="badge ${cfg.badge}">${item.bin}</span>`;
+      document.getElementById('res-steps').innerHTML = (STEPS[item.bin]||[]).map(s=>`<li>${s}</li>`).join('');
+      document.getElementById('search-result').classList.add('visible');
+      document.getElementById('search-result').scrollIntoView({behavior:'smooth',block:'start'});
+    };
+
+    window.searchObject = async () => {
+      const q = document.getElementById('recycle-search').value.trim();
+      if (!q) return;
+
+      // First check local data
+      const local = ITEMS.find(i=>i.name.toLowerCase().includes(q.toLowerCase()));
+      if (local) { showItem(local.name); return; }
+
+      // Otherwise ask EcoBot
+      toast('🤖 Consultando con EcoBot...','info');
+      try {
+        const resp = await fetch('https://api.anthropic.com/v1/messages',{
+          method:'POST',
+          headers:{'Content-Type':'application/json'},
+          body:JSON.stringify({
+            model:'claude-sonnet-4-20250514', max_tokens:500,
+            messages:[{ role:'user', content:`¿En qué contenedor se recicla: "${q}"? Responde con: tipo de contenedor, color, pasos breves para prepararlo. Sé conciso y en español.` }]
+          })
+        });
+        const data = await resp.json();
+        const text = data.content?.[0]?.text || 'No se encontró información.';
+        document.getElementById('res-icon').textContent = '♻️';
+        document.getElementById('res-title').textContent = q;
+        document.getElementById('res-bin').textContent = 'Resultado de EcoBot';
+        document.getElementById('res-desc').textContent = text;
+        document.getElementById('res-badge').innerHTML = '<span class="badge badge-green">🤖 IA</span>';
+        document.getElementById('res-steps').innerHTML='';
+        document.getElementById('search-result').classList.add('visible');
+      } catch(e) { toast('Error al consultar EcoBot','error'); }
+    };
+
+    document.getElementById('recycle-search').addEventListener('keydown', e => {
+      if(e.key==='Enter') window.searchObject();
+    });
+
+    // Render challenges
+    document.getElementById('challenges-list').innerHTML = CHALLENGES.map(c=>`
+      <div class="challenge-card">
+        <div style="display:flex;justify-content:space-between;align-items:center;">
+          <span style="font-size:0.85rem;font-weight:700;">${c.icon} ${c.title}</span>
+          <span class="badge badge-lime">+${c.pts}</span>
+        </div>
+        <div style="font-size:0.72rem;color:var(--text-muted);margin-top:4px;">${c.progress}/${c.total}</div>
+        <div class="challenge-progress"><div class="challenge-fill" style="width:${Math.round(c.progress/c.total*100)}%"></div></div>
+      </div>`).join('');
+
+    document.getElementById('tips-list').innerHTML = TIPS.map(t=>`
+      <div class="eco-tip">${t}</div>`).join('');
+
+    renderItems(ITEMS);
+  </script>
+</body>
+</html>

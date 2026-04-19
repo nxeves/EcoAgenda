@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>EcoAgenda — Ranking</title>
+  <link rel="stylesheet" href="../css/global.css" />
+  <link rel="stylesheet" href="../css/componentes.css" />
+  <style>
+    .ranking-hero {
+      text-align:center; padding:32px 0 24px;
+      background:radial-gradient(ellipse at center, rgba(34,197,94,0.08) 0%, transparent 65%);
+      border-radius:var(--r-xl); margin-bottom:28px;
+    }
+    .podium-row {
+      display:flex; align-items:flex-end; justify-content:center; gap:12px;
+      margin-bottom:24px;
+    }
+    .podium-item {
+      display:flex; flex-direction:column; align-items:center; gap:8px;
+      padding:16px 24px;
+      border-radius:var(--r-lg);
+    }
+    .podium-1 { background:linear-gradient(135deg,rgba(251,191,36,0.12),var(--bg-card)); border:1.5px solid rgba(251,191,36,0.4); order:2; }
+    .podium-2 { background:linear-gradient(135deg,rgba(167,139,250,0.12),var(--bg-card)); border:1.5px solid rgba(167,139,250,0.4); order:1; }
+    .podium-3 { background:linear-gradient(135deg,rgba(34,211,238,0.12),var(--bg-card)); border:1.5px solid rgba(34,211,238,0.4); order:3; }
+    .podium-avatar { font-size:2.5rem; }
+    .podium-name  { font-weight:700; font-size:0.82rem; }
+    .podium-score { font-family:var(--font-mono); font-weight:700; font-size:0.9rem; }
+    .podium-pos   { font-family:var(--font-display); font-size:1.6rem; font-weight:900; }
+
+    .rank-filters { display:flex; gap:8px; margin-bottom:20px; flex-wrap:wrap; }
+    .rfilt {
+      padding:7px 16px; border-radius:var(--r-full);
+      background:transparent; border:1.5px solid var(--border-soft);
+      color:var(--text-muted); font-family:var(--font-body);
+      font-size:0.78rem; font-weight:700; cursor:pointer;
+      transition:all var(--t-mid);
+    }
+    .rfilt.active { background:rgba(34,197,94,0.1); border-color:var(--green-500); color:var(--green-300); }
+
+    .live-indicator {
+      display:inline-flex; align-items:center; gap:6px;
+      font-size:0.72rem; color:var(--green-400); font-weight:700;
+    }
+    .live-dot { width:6px; height:6px; background:var(--green-400); border-radius:50%; animation:pulse-dot 1s infinite; }
+
+    .rank-list { display:flex; flex-direction:column; gap:8px; }
+
+    .my-rank-banner {
+      background:linear-gradient(135deg,rgba(34,197,94,0.12),var(--bg-card));
+      border:1.5px solid var(--green-600);
+      border-radius:var(--r-md); padding:14px 20px;
+      display:flex; align-items:center; gap:14px;
+      margin-bottom:20px; font-size:0.88rem;
+    }
+
+    .rank-ranges {
+      display:grid; grid-template-columns:repeat(4,1fr); gap:12px;
+      margin-top:24px;
+    }
+    .range-card {
+      background:var(--bg-card); border:1px solid var(--border-soft);
+      border-radius:var(--r-lg); padding:18px 14px; text-align:center;
+    }
+    .range-icon { font-size:2rem; margin-bottom:8px; display:block; }
+    .range-name { font-weight:700; font-size:0.85rem; margin-bottom:4px; }
+    .range-pts  { font-size:0.72rem; color:var(--text-muted); }
+
+    @media(max-width:768px) { .rank-ranges{grid-template-columns:repeat(2,1fr);} .podium-row{gap:6px;} }
+  </style>
+</head>
+<body>
+  <canvas id="bg-canvas"></canvas>
+  <div id="toast-container"></div>
+
+  <nav class="eco-nav">
+    <div class="container">
+      <a href="inicio.html" class="nav-logo"><div class="logo-dot"></div>EcoAgenda</a>
+      <ul class="nav-links">
+        <li><a href="inicio.html"><span class="nav-icon">🏠</span>Inicio</a></li>
+        <li><a href="agenda.html"><span class="nav-icon">📝</span>Agenda</a></li>
+        <li><a href="reciclaje.html"><span class="nav-icon">♻️</span>Recicla</a></li>
+        <li><a href="chat.html"><span class="nav-icon">💬</span>Chat</a></li>
+        <li><a href="juego.html"><span class="nav-icon">🎮</span>Juego</a></li>
+        <li><a href="ranking.html" class="active"><span class="nav-icon">🏆</span>Ranking</a></li>
+        <li><a href="ecobot.html"><span class="nav-icon">🤖</span>EcoBot</a></li>
+        <li><a href="perfil.html"><span class="nav-icon">👤</span>Perfil</a></li>
+      </ul>
+      <div class="nav-user">
+        <img id="nav-avatar" src="https://ui-avatars.com/api/?name=Eco&background=0b5022&color=86efac&bold=true" class="nav-avatar" />
+      </div>
+    </div>
+  </nav>
+
+  <div class="page-wrap main-content">
+    <div class="container">
+
+      <!-- Hero -->
+      <div class="ranking-hero stagger">
+        <div style="display:flex;align-items:center;justify-content:center;gap:10px;margin-bottom:6px;">
+          <h1 class="section-title" style="margin:0;">🏆 Ranking Global</h1>
+          <div class="live-indicator"><div class="live-dot"></div>EN VIVO</div>
+        </div>
+        <p class="section-subtitle" style="margin-bottom:20px;">Los guardianes más ecológicos del planeta</p>
+
+        <!-- Top 3 podium -->
+        <div class="podium-row" id="podium"></div>
+      </div>
+
+      <!-- My rank -->
+      <div class="my-rank-banner" id="my-rank-banner">
+        <span style="font-size:1.5rem;">🌿</span>
+        <div>
+          <div style="font-weight:800;">Tu posición</div>
+          <div style="color:var(--text-muted);font-size:0.78rem;">Cargando...</div>
+        </div>
+        <div style="margin-left:auto;font-family:var(--font-mono);font-weight:700;color:var(--accent-lime);" id="my-pos">—</div>
+      </div>
+
+      <!-- Filters -->
+      <div class="rank-filters">
+        <button class="rfilt active" onclick="filterRank('global',this)">🌍 Global</button>
+        <button class="rfilt" onclick="filterRank('semanal',this)">📅 Esta semana</button>
+        <button class="rfilt" onclick="filterRank('amigos',this)">👥 Amigos</button>
+      </div>
+
+      <!-- Rank list -->
+      <div class="rank-list stagger" id="rank-list">
+        <div style="text-align:center;padding:40px;color:var(--text-muted);">
+          <div class="spinner spinner-lg" style="margin:0 auto 12px;"></div>
+          Cargando ranking...
+        </div>
+      </div>
+
+      <!-- Rank ranges -->
+      <h2 style="font-family:var(--font-display);font-size:1.1rem;margin:28px 0 14px;">🌱 Rangos ecológicos</h2>
+      <div class="rank-ranges stagger">
+        <div class="range-card">
+          <span class="range-icon">🌱</span>
+          <div class="range-name rank-seed">Semilla</div>
+          <div class="range-pts">0 — 199 pts</div>
+          <div style="font-size:0.72rem;color:var(--text-muted);margin-top:6px;">El primer paso en tu camino verde</div>
+        </div>
+        <div class="range-card">
+          <span class="range-icon">🌿</span>
+          <div class="range-name rank-plant">Planta</div>
+          <div class="range-pts">200 — 599 pts</div>
+          <div style="font-size:0.72rem;color:var(--text-muted);margin-top:6px;">Creciendo con consciencia ambiental</div>
+        </div>
+        <div class="range-card">
+          <span class="range-icon">🌳</span>
+          <div class="range-name rank-tree">Árbol</div>
+          <div class="range-pts">600 — 1499 pts</div>
+          <div style="font-size:0.72rem;color:var(--text-muted);margin-top:6px;">Un pilar en la comunidad ecológica</div>
+        </div>
+        <div class="range-card">
+          <span class="range-icon">🌍</span>
+          <div class="range-name rank-guardian">Guardián</div>
+          <div class="range-pts">1500+ pts</div>
+          <div style="font-size:0.72rem;color:var(--text-muted);margin-top:6px;">Protector del planeta</div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <script type="module">
+    import { initParticles, toast, getRank } from '../js/utils.js';
+    import { auth, db } from '../js/firebase.js';
+    import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+    import { collection, query, orderBy, limit, getDocs, onSnapshot } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+    initParticles();
+
+    let currentUID = null;
+    let allUsers = [];
+
+    // Demo data fallback
+    const DEMO_USERS = [
+      { uid:'u1', displayName:'EcoGuardián',  puntos:2450, rank:'🌍', avatar:'🌍' },
+      { uid:'u2', displayName:'ArbolFuerte',   puntos:1820, rank:'🌳', avatar:'🌳' },
+      { uid:'u3', displayName:'PlantaVerde',   puntos:1640, rank:'🌳', avatar:'🌿' },
+      { uid:'u4', displayName:'SemillaNueva',  puntos:820,  rank:'🌳', avatar:'🌱' },
+      { uid:'u5', displayName:'EcoNinja',      puntos:560,  rank:'🌿', avatar:'🎋' },
+      { uid:'u6', displayName:'TerraFirme',    puntos:430,  rank:'🌿', avatar:'🏔️' },
+      { uid:'u7', displayName:'EcoHéroe23',    puntos:310,  rank:'🌿', avatar:'⭐' },
+      { uid:'u8', displayName:'Demo',          puntos:450,  rank:'🌿', avatar:'🧪', isMe:true },
+      { uid:'u9', displayName:'NaturAlma',     puntos:180,  rank:'🌱', avatar:'🦋' },
+      { uid:'u10',displayName:'BiosféraX',     puntos:90,   rank:'🌱', avatar:'🌊' },
+    ];
+
+    onAuthStateChanged(auth, async (user) => {
+      if (!user) {
+        if (!sessionStorage.getItem('eco_demo')) { location.href='../index.html'; return; }
+        currentUID='demo';
+        renderRanking(DEMO_USERS);
+        return;
+      }
+      currentUID = user.uid;
+      loadRealtime();
+    });
+
+    function loadRealtime() {
+      const q = query(collection(db,'users'), orderBy('puntos','desc'), limit(50));
+      onSnapshot(q, snap => {
+        allUsers = snap.docs.map(d => ({ uid:d.id, ...d.data(), isMe:d.id===currentUID }));
+        renderRanking(allUsers);
+      }, () => {
+        // Fallback to demo
+        renderRanking(DEMO_USERS);
+      });
+    }
+
+    function renderRanking(users) {
+      // Podium
+      const top3 = users.slice(0,3);
+      const podiumHTML = top3.map((u,i) => {
+        const medals = ['🥇','🥈','🥉'];
+        const classes=['podium-1','podium-2','podium-3'];
+        const rank = getRank(u.puntos);
+        return `
+          <div class="podium-item ${classes[i]}">
+            <div class="podium-avatar">${u.avatar||rank.icon}</div>
+            <div class="podium-pos">${medals[i]}</div>
+            <div class="podium-name">${u.displayName}</div>
+            <div class="podium-score" style="color:${i===0?'var(--accent-amber)':i===1?'var(--accent-violet)':'var(--accent-cyan)'}">${u.puntos} pts</div>
+            <span class="badge ${i===0?'badge-amber':i===1?'badge-violet':'badge-cyan'}">${rank.icon} ${rank.name}</span>
+          </div>`;
+      }).join('');
+      document.getElementById('podium').innerHTML = podiumHTML;
+
+      // My rank
+      const myIdx = users.findIndex(u=>u.isMe||u.uid===currentUID);
+      if (myIdx >= 0) {
+        const me = users[myIdx];
+        const rank = getRank(me.puntos);
+        document.getElementById('my-rank-banner').innerHTML = `
+          <span style="font-size:1.5rem;">${rank.icon}</span>
+          <div>
+            <div style="font-weight:800;">${me.displayName}</div>
+            <div style="color:var(--text-muted);font-size:0.78rem;">${rank.name} · ${me.puntos} pts</div>
+          </div>
+          <div style="margin-left:auto;font-family:var(--font-mono);font-weight:700;color:var(--accent-lime);">
+            #${myIdx+1}
+          </div>`;
+      }
+
+      // Full list
+      const listHTML = users.map((u,i) => {
+        const rank = getRank(u.puntos);
+        const posClass = i===0?'gold':i===1?'silver':i===2?'bronze':'other';
+        const topClass = i<3?` top-${i+1}`:'';
+        return `
+          <div class="rank-card${topClass}${u.isMe||u.uid===currentUID?' ':''}">
+            <div class="rank-pos ${posClass}">${i<3?['🥇','🥈','🥉'][i]:'#'+(i+1)}</div>
+            <div style="font-size:1.5rem;">${u.avatar||rank.icon}</div>
+            <div class="rank-info">
+              <div class="rank-name">${u.displayName}${u.isMe||u.uid===currentUID?' <span class="badge badge-green">Tú</span>':''}</div>
+              <div class="rank-level">${rank.icon} ${rank.name}</div>
+            </div>
+            <div class="rank-score">${u.puntos} pts</div>
+          </div>`;
+      }).join('');
+      document.getElementById('rank-list').innerHTML = listHTML;
+    }
+
+    window.filterRank = (filter, btn) => {
+      document.querySelectorAll('.rfilt').forEach(b=>b.classList.remove('active'));
+      btn.classList.add('active');
+      if (currentUID==='demo') {
+        if (filter==='semanal') {
+          const weekly = DEMO_USERS.map(u=>({...u, puntos:Math.floor(u.puntos*0.3)})).sort((a,b)=>b.puntos-a.puntos);
+          renderRanking(weekly);
+        } else { renderRanking(DEMO_USERS); }
+      }
+    };
+  </script>
+</body>
+</html>

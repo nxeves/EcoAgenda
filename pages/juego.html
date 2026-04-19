@@ -1,0 +1,520 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>EcoAgenda — Juego</title>
+  <link rel="stylesheet" href="../css/global.css" />
+  <link rel="stylesheet" href="../css/componentes.css" />
+  <style>
+    .game-page { background: radial-gradient(ellipse at center top, rgba(11,80,34,0.2) 0%, transparent 60%); }
+
+    .game-header-bar {
+      display:flex; align-items:center; justify-content:space-between;
+      background:var(--bg-card); border:1px solid var(--border-soft);
+      border-radius:var(--r-lg); padding:16px 24px; margin-bottom:20px;
+    }
+    .game-stat { text-align:center; }
+    .game-stat-val { font-family:var(--font-display); font-size:1.4rem; font-weight:900; color:var(--green-300); }
+    .game-stat-lbl { font-size:0.7rem; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.5px; }
+
+    .level-badge {
+      padding:6px 18px;
+      background:linear-gradient(135deg,var(--green-700),var(--green-500));
+      border-radius:var(--r-full);
+      font-family:var(--font-display); font-weight:800; font-size:0.9rem;
+    }
+
+    /* Game arena */
+    .game-arena {
+      background:var(--bg-card); border:2px solid var(--border-mid);
+      border-radius:var(--r-xl); overflow:hidden; margin-bottom:16px;
+      min-height:300px; position:relative;
+      display:flex; align-items:center; justify-content:center;
+    }
+
+    .falling-area {
+      width:100%; height:300px;
+      position:relative; overflow:hidden;
+      background: linear-gradient(180deg, rgba(11,80,34,0.1) 0%, transparent 100%);
+    }
+
+    .waste-item {
+      position:absolute;
+      width:70px; height:70px;
+      display:flex; flex-direction:column; align-items:center; justify-content:center;
+      background:var(--bg-elevated); border:2px solid var(--border-mid);
+      border-radius:var(--r-md);
+      cursor:grab; user-select:none;
+      font-size:2rem;
+      box-shadow:var(--shadow-card);
+      transition:transform 0.1s, box-shadow 0.1s;
+      z-index:10;
+    }
+    .waste-item:hover { transform:scale(1.1); box-shadow:var(--shadow-glow); }
+    .waste-item.dragging { transform:scale(1.15) rotate(5deg); opacity:0.9; cursor:grabbing; z-index:50; }
+    .waste-item span.wi-label { font-size:0.55rem; font-weight:700; color:var(--text-muted); margin-top:2px; max-width:64px; text-align:center; line-height:1.2; }
+
+    /* Bins row */
+    .bins-row-game {
+      display:flex; gap:10px; justify-content:center; padding:16px 20px;
+      background:var(--bg-elevated); border-top:1px solid var(--border-soft);
+      flex-wrap:wrap;
+    }
+
+    .game-bin-drop {
+      display:flex; flex-direction:column; align-items:center; gap:4px;
+      padding:14px 12px; min-width:90px;
+      background:var(--bg-card); border:2.5px dashed var(--border-mid);
+      border-radius:var(--r-lg); cursor:pointer;
+      transition:all var(--t-mid); font-size:0.72rem; font-weight:700;
+      color:var(--text-secondary);
+    }
+    .game-bin-drop .bin-emoji { font-size:2.2rem; }
+    .game-bin-drop.dragover {
+      border-style:solid; transform:scale(1.08);
+      background:rgba(34,197,94,0.08);
+    }
+    .game-bin-drop[data-bin="papel"].dragover   { border-color:var(--accent-cyan); }
+    .game-bin-drop[data-bin="plastico"].dragover{ border-color:var(--accent-amber); }
+    .game-bin-drop[data-bin="vidrio"].dragover  { border-color:var(--green-400); }
+    .game-bin-drop[data-bin="organico"].dragover{ border-color:var(--accent-lime); }
+    .game-bin-drop[data-bin="metal"].dragover   { border-color:var(--accent-violet); }
+    .game-bin-drop[data-bin="general"].dragover { border-color:var(--accent-rose); }
+
+    /* Effects */
+    .correct-flash { animation:correctFlash 0.5s ease; }
+    .wrong-shake   { animation:wrongShake 0.5s ease; }
+
+    @keyframes correctFlash {
+      0%,100% { background:var(--bg-card); }
+      50% { background:rgba(34,197,94,0.2); }
+    }
+    @keyframes wrongShake {
+      0%,100% { transform:translateX(0); }
+      20%,60% { transform:translateX(-6px); }
+      40%,80% { transform:translateX(6px); }
+    }
+
+    /* Particles on correct */
+    .confetti {
+      position:absolute; pointer-events:none; z-index:100;
+      font-size:1.4rem;
+      animation:confettiFall 1.2s ease-out forwards;
+    }
+    @keyframes confettiFall {
+      0%  { opacity:1; transform:translateY(0) scale(1) rotate(0deg); }
+      100%{ opacity:0; transform:translateY(80px) scale(0.5) rotate(360deg); }
+    }
+
+    /* Game over overlay */
+    .game-over {
+      position:absolute; inset:0;
+      background:rgba(8,15,10,0.9);
+      display:flex; flex-direction:column; align-items:center; justify-content:center;
+      gap:16px; z-index:200;
+      animation:fadeIn 0.4s ease;
+    }
+    .game-over h2 { font-family:var(--font-display); font-size:2rem; }
+    .game-over .final-score { font-size:1rem; color:var(--text-muted); }
+
+    .hint-bar {
+      text-align:center; padding:10px;
+      font-size:0.82rem; color:var(--text-muted);
+      background:var(--bg-elevated);
+      border-top:1px solid var(--border-soft);
+    }
+  </style>
+</head>
+<body>
+  <canvas id="bg-canvas"></canvas>
+  <div id="toast-container"></div>
+
+  <nav class="eco-nav">
+    <div class="container">
+      <a href="inicio.html" class="nav-logo"><div class="logo-dot"></div>EcoAgenda</a>
+      <ul class="nav-links">
+        <li><a href="inicio.html"><span class="nav-icon">🏠</span>Inicio</a></li>
+        <li><a href="agenda.html"><span class="nav-icon">📝</span>Agenda</a></li>
+        <li><a href="reciclaje.html"><span class="nav-icon">♻️</span>Recicla</a></li>
+        <li><a href="chat.html"><span class="nav-icon">💬</span>Chat</a></li>
+        <li><a href="juego.html" class="active"><span class="nav-icon">🎮</span>Juego</a></li>
+        <li><a href="ranking.html"><span class="nav-icon">🏆</span>Ranking</a></li>
+        <li><a href="ecobot.html"><span class="nav-icon">🤖</span>EcoBot</a></li>
+        <li><a href="perfil.html"><span class="nav-icon">👤</span>Perfil</a></li>
+      </ul>
+      <div class="nav-user">
+        <img id="nav-avatar" src="https://ui-avatars.com/api/?name=Eco&background=0b5022&color=86efac&bold=true" class="nav-avatar" />
+      </div>
+    </div>
+  </nav>
+
+  <div class="page-wrap main-content game-page">
+    <div class="container">
+
+      <h1 class="section-title">🎮 Separa la basura</h1>
+      <p class="section-subtitle">Arrastra cada objeto al contenedor correcto antes de que se acabe el tiempo</p>
+
+      <!-- Stats bar -->
+      <div class="game-header-bar">
+        <div class="game-stat">
+          <div class="game-stat-val" id="score">0</div>
+          <div class="game-stat-lbl">Puntos</div>
+        </div>
+        <div class="game-stat">
+          <div class="game-stat-val" id="streak">0</div>
+          <div class="game-stat-lbl">Racha</div>
+        </div>
+        <div class="level-badge" id="level-badge">Nivel 1</div>
+        <div class="game-stat">
+          <div class="game-stat-val" id="lives">❤️❤️❤️</div>
+          <div class="game-stat-lbl">Vidas</div>
+        </div>
+        <div class="game-stat">
+          <div class="game-stat-val" id="timer">60</div>
+          <div class="game-stat-lbl">Segundos</div>
+        </div>
+      </div>
+
+      <!-- Game area -->
+      <div class="game-arena" id="game-arena">
+        <div class="falling-area" id="falling-area">
+          <!-- items spawned here -->
+        </div>
+
+        <!-- Game over overlay -->
+        <div class="game-over" id="game-over" style="display:none;">
+          <div style="font-size:3rem">🌍</div>
+          <h2>¡Juego terminado!</h2>
+          <p class="final-score">Puntuación: <strong id="final-score">0</strong></p>
+          <p class="final-score" id="final-rank"></p>
+          <button class="btn btn-primary btn-lg" onclick="startGame()">🔄 Jugar de nuevo</button>
+          <a href="ranking.html" class="btn btn-secondary">🏆 Ver ranking</a>
+        </div>
+
+        <!-- Start screen -->
+        <div id="start-screen" style="text-align:center;padding:40px;">
+          <div style="font-size:4rem;margin-bottom:16px;">♻️</div>
+          <h2 style="font-family:var(--font-display);margin-bottom:8px;">¿Listo para reciclar?</h2>
+          <p style="color:var(--text-muted);margin-bottom:24px;font-size:0.85rem;">
+            Arrastra los objetos al contenedor correcto.<br>
+            Gana puntos por cada respuesta acertada.
+          </p>
+          <button class="btn btn-primary btn-xl" onclick="startGame()">🎮 ¡Jugar!</button>
+        </div>
+      </div>
+
+      <div class="hint-bar" id="hint-bar">
+        <strong>💡 Tip:</strong> Arrastra el objeto al contenedor que corresponde. Recibirás puntos extra por racha.
+      </div>
+
+      <!-- Bins -->
+      <div class="bins-row-game" id="bins-row">
+        <div class="game-bin-drop" data-bin="papel">
+          <span class="bin-emoji">📰</span>Papel/Cartón
+        </div>
+        <div class="game-bin-drop" data-bin="plastico">
+          <span class="bin-emoji">🥤</span>Plástico
+        </div>
+        <div class="game-bin-drop" data-bin="vidrio">
+          <span class="bin-emoji">🍾</span>Vidrio
+        </div>
+        <div class="game-bin-drop" data-bin="organico">
+          <span class="bin-emoji">🍎</span>Orgánico
+        </div>
+        <div class="game-bin-drop" data-bin="metal">
+          <span class="bin-emoji">🥫</span>Metal
+        </div>
+        <div class="game-bin-drop" data-bin="general">
+          <span class="bin-emoji">🗑️</span>No recic.
+        </div>
+      </div>
+
+      <!-- High scores -->
+      <div class="card" style="margin-top:20px;">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;">
+          <h3 style="font-family:var(--font-display);">🏅 Mis mejores puntuaciones</h3>
+          <button class="btn btn-ghost btn-sm" onclick="clearScores()">Borrar</button>
+        </div>
+        <div id="local-scores" style="display:flex;flex-direction:column;gap:8px;"></div>
+      </div>
+
+    </div>
+  </div>
+
+  <script type="module">
+    import { initParticles, toast, getRank } from '../js/utils.js';
+    import { auth, db } from '../js/firebase.js';
+    import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+    import { doc, updateDoc, getDoc, increment } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+    initParticles();
+
+    let currentUID = null;
+    onAuthStateChanged(auth, u => {
+      currentUID = u ? u.uid : (sessionStorage.getItem('eco_demo')?'demo':null);
+      if (!currentUID) { location.href='../index.html'; return; }
+      renderLocalScores();
+    });
+
+    const ITEMS = [
+      { emoji:'📰', label:'Periódico',     bin:'papel'    },
+      { emoji:'🥤', label:'Botella PET',   bin:'plastico' },
+      { emoji:'🍾', label:'Botella vidrio',bin:'vidrio'   },
+      { emoji:'🍌', label:'Cáscara',       bin:'organico' },
+      { emoji:'🥫', label:'Lata de sopa',  bin:'metal'    },
+      { emoji:'📦', label:'Caja cartón',   bin:'papel'    },
+      { emoji:'🛍️', label:'Bolsa plástica',bin:'plastico' },
+      { emoji:'🍎', label:'Manzana',       bin:'organico' },
+      { emoji:'📚', label:'Revista',       bin:'papel'    },
+      { emoji:'🔋', label:'Pila',          bin:'general'  },
+      { emoji:'🥛', label:'Cartón leche',  bin:'papel'    },
+      { emoji:'🫙', label:'Frasco vidrio', bin:'vidrio'   },
+      { emoji:'🥚', label:'Cáscara huevo', bin:'organico' },
+      { emoji:'🪣', label:'Bote pintura',  bin:'general'  },
+      { emoji:'🍺', label:'Lata cerveza',  bin:'metal'    },
+    ];
+
+    const HINTS = {
+      papel:    '📰 Papel y cartón van al contenedor AZUL',
+      plastico: '🥤 Plástico va al contenedor AMARILLO',
+      vidrio:   '🍾 Vidrio va al contenedor VERDE',
+      organico: '🍎 Restos orgánicos van al MARRÓN',
+      metal:    '🥫 Metal va al contenedor LILA',
+      general:  '🗑️ No reciclable va al GRIS — llevar a punto limpio',
+    };
+
+    let score = 0, streak = 0, lives = 3, timerSecs = 60;
+    let level = 1, gameActive = false, timerInterval = null;
+    let draggingBin = null, currentItem = null;
+    let spawnQueue = [];
+
+    window.startGame = () => {
+      score=0; streak=0; lives=3; timerSecs=60; level=1; gameActive=true;
+      document.getElementById('start-screen').style.display='none';
+      document.getElementById('game-over').style.display='none';
+      updateUI();
+
+      clearInterval(timerInterval);
+      timerInterval = setInterval(() => {
+        timerSecs--;
+        document.getElementById('timer').textContent = timerSecs;
+        if (timerSecs <= 0) { endGame(); }
+        if (timerSecs % 15 === 0 && level < 5) { level++; document.getElementById('level-badge').textContent='Nivel '+level; toast('⬆️ ¡Nivel '+level+'!','info'); }
+      }, 1000);
+
+      spawnItem();
+    };
+
+    function spawnItem() {
+      if (!gameActive) return;
+      const area = document.getElementById('falling-area');
+
+      // Remove previous
+      area.querySelectorAll('.waste-item').forEach(e=>e.remove());
+
+      const item = ITEMS[Math.floor(Math.random()*ITEMS.length)];
+      currentItem = item;
+
+      const el = document.createElement('div');
+      el.className = 'waste-item';
+      el.draggable = true;
+      el.dataset.bin = item.bin;
+      el.innerHTML = `${item.emoji}<span class="wi-label">${item.label}</span>`;
+
+      // Random X position
+      const x = Math.random() * (area.offsetWidth - 80) + 10;
+      const y = Math.random() * (area.offsetHeight - 90) + 10;
+      el.style.left = x + 'px';
+      el.style.top  = y + 'px';
+
+      // Drag events
+      el.addEventListener('dragstart', e => {
+        el.classList.add('dragging');
+        e.dataTransfer.setData('bin', item.bin);
+      });
+      el.addEventListener('dragend', () => el.classList.remove('dragging'));
+
+      // Touch support
+      el.addEventListener('touchstart', handleTouchStart, {passive:true});
+      el.addEventListener('touchmove',  handleTouchMove,  {passive:false});
+      el.addEventListener('touchend',   handleTouchEnd);
+
+      area.appendChild(el);
+      document.getElementById('hint-bar').innerHTML = `<strong>💡 Tip:</strong> ${HINTS[item.bin]}`;
+
+      // Auto-advance if too slow (level dependent)
+      clearTimeout(window._autoTimer);
+      const delay = Math.max(4000, 10000 - (level * 1500));
+      window._autoTimer = setTimeout(() => {
+        if (gameActive && area.contains(el)) { wrongAnswer(); }
+      }, delay);
+    }
+
+    // ── Drag over bins ────────────────────────────────
+    document.querySelectorAll('.game-bin-drop').forEach(bin => {
+      bin.addEventListener('dragover',  e => { e.preventDefault(); bin.classList.add('dragover'); });
+      bin.addEventListener('dragleave', () => bin.classList.remove('dragover'));
+      bin.addEventListener('drop', e => {
+        e.preventDefault();
+        bin.classList.remove('dragover');
+        const droppedBin = e.dataTransfer.getData('bin') || draggingBin;
+        checkAnswer(bin.dataset.bin, droppedBin, bin);
+      });
+    });
+
+    function checkAnswer(targetBin, correctBin, binEl) {
+      if (targetBin === correctBin) {
+        correctAnswer(binEl);
+      } else {
+        wrongAnswer();
+        toast(`❌ Era el contenedor ${binEl.dataset.bin === correctBin ? '✓':''}`, 'error', 2000);
+      }
+    }
+
+    function correctAnswer(binEl) {
+      streak++;
+      const bonus = streak >= 3 ? Math.floor(streak/3) * 5 : 0;
+      const pts = 10 + bonus + (level * 2);
+      score += pts;
+
+      // Flash effect on bin
+      binEl.classList.add('correct-flash');
+      setTimeout(() => binEl.classList.remove('correct-flash'), 500);
+
+      // Confetti
+      spawnConfetti(binEl);
+
+      if (bonus > 0) toast(`+${pts} pts 🔥 Racha x${streak}!`, 'success', 1500);
+      else toast(`+${pts} ✅ ¡Correcto!`, 'success', 1000);
+
+      updateUI();
+      setTimeout(spawnItem, 600);
+    }
+
+    function wrongAnswer() {
+      lives--;
+      streak = 0;
+      const arena = document.getElementById('game-arena');
+      arena.classList.add('wrong-shake');
+      setTimeout(() => arena.classList.remove('wrong-shake'), 500);
+      toast('❌ ¡Contenedor incorrecto!', 'error', 1500);
+      updateUI();
+      if (lives <= 0) { endGame(); return; }
+      spawnItem();
+    }
+
+    function endGame() {
+      gameActive = false;
+      clearInterval(timerInterval);
+      clearTimeout(window._autoTimer);
+      document.getElementById('falling-area').querySelectorAll('.waste-item').forEach(e=>e.remove());
+      document.getElementById('final-score').textContent = score;
+      document.getElementById('final-rank').textContent = '🏅 Rango: ' + getRank(score).icon + ' ' + getRank(score).name;
+      document.getElementById('game-over').style.display='flex';
+
+      // Save score
+      const scores = JSON.parse(localStorage.getItem('eco_scores')||'[]');
+      scores.push({ score, level, date:new Date().toLocaleDateString('es-MX') });
+      scores.sort((a,b)=>b.score-a.score);
+      localStorage.setItem('eco_scores', JSON.stringify(scores.slice(0,5)));
+      renderLocalScores();
+
+      // Update Firebase points
+      if (currentUID && currentUID !== 'demo') {
+        updateDoc(doc(db,'users',currentUID),{ puntos: increment(score) }).catch(()=>{});
+      }
+    }
+
+    function updateUI() {
+      document.getElementById('score').textContent = score;
+      document.getElementById('streak').textContent = streak;
+      document.getElementById('timer').textContent = timerSecs;
+      const hearts = ['','❤️','❤️❤️','❤️❤️❤️'];
+      document.getElementById('lives').textContent = hearts[Math.min(lives,3)];
+    }
+
+    function spawnConfetti(binEl) {
+      const rect = binEl.getBoundingClientRect();
+      const wrap = document.querySelector('.game-arena');
+      const wRect = wrap.getBoundingClientRect();
+      const emojis = ['✨','🌿','⭐','🎉','♻️'];
+      for (let i = 0; i < 5; i++) {
+        const el = document.createElement('div');
+        el.className = 'confetti';
+        el.textContent = emojis[i];
+        el.style.left = (rect.left - wRect.left + Math.random()*60 - 20) + 'px';
+        el.style.top  = (rect.top  - wRect.top  + Math.random()*20) + 'px';
+        wrap.appendChild(el);
+        setTimeout(() => el.remove(), 1300);
+      }
+    }
+
+    // ── Touch drag support ────────────────────────────
+    let touchItem = null, touchOffX = 0, touchOffY = 0;
+
+    function handleTouchStart(e) {
+      touchItem = e.target.closest('.waste-item');
+      const t = e.touches[0];
+      const r = touchItem.getBoundingClientRect();
+      touchOffX = t.clientX - r.left;
+      touchOffY = t.clientY - r.top;
+      touchItem.classList.add('dragging');
+      draggingBin = touchItem.dataset.bin;
+    }
+
+    function handleTouchMove(e) {
+      e.preventDefault();
+      if (!touchItem) return;
+      const t = e.touches[0];
+      const area = document.getElementById('falling-area');
+      const ar = area.getBoundingClientRect();
+      touchItem.style.left = (t.clientX - ar.left - touchOffX) + 'px';
+      touchItem.style.top  = (t.clientY - ar.top  - touchOffY) + 'px';
+
+      // Highlight bins under touch
+      document.querySelectorAll('.game-bin-drop').forEach(bin => {
+        const br = bin.getBoundingClientRect();
+        const over = t.clientX>br.left&&t.clientX<br.right&&t.clientY>br.top&&t.clientY<br.bottom;
+        bin.classList.toggle('dragover', over);
+      });
+    }
+
+    function handleTouchEnd(e) {
+      if (!touchItem) return;
+      touchItem.classList.remove('dragging');
+      const t = e.changedTouches[0];
+      let dropped = false;
+      document.querySelectorAll('.game-bin-drop').forEach(bin => {
+        const br = bin.getBoundingClientRect();
+        if (t.clientX>br.left&&t.clientX<br.right&&t.clientY>br.top&&t.clientY<br.bottom) {
+          bin.classList.remove('dragover');
+          checkAnswer(bin.dataset.bin, touchItem.dataset.bin, bin);
+          dropped = true;
+        }
+      });
+      if (!dropped) touchItem.classList.remove('dragging');
+      touchItem = null; draggingBin = null;
+    }
+
+    // ── Local scores ──────────────────────────────────
+    function renderLocalScores() {
+      const scores = JSON.parse(localStorage.getItem('eco_scores')||'[]');
+      const el = document.getElementById('local-scores');
+      if (!scores.length) { el.innerHTML='<div style="color:var(--text-muted);font-size:0.85rem;">Sin partidas registradas aún</div>'; return; }
+      el.innerHTML = scores.map((s,i)=>`
+        <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 14px;background:var(--bg-elevated);border-radius:var(--r-md);">
+          <span style="color:var(--text-muted);font-size:0.8rem;">#${i+1} — ${s.date}</span>
+          <span style="font-family:var(--font-mono);color:var(--accent-lime);font-weight:700;">${s.score} pts</span>
+          <span class="badge badge-green">Nv. ${s.level}</span>
+        </div>`).join('');
+    }
+
+    window.clearScores = () => {
+      localStorage.removeItem('eco_scores');
+      renderLocalScores();
+      toast('Puntuaciones borradas','info');
+    };
+  </script>
+</body>
+</html>

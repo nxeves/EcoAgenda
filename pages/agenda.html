@@ -1,0 +1,584 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>EcoAgenda — Agenda</title>
+  <link rel="stylesheet" href="../css/global.css" />
+  <link rel="stylesheet" href="../css/componentes.css" />
+  <style>
+    .agenda-layout { display:grid; grid-template-columns:1fr 340px; gap:20px; }
+
+    .agenda-tabs { display:flex; gap:8px; margin-bottom:20px; }
+    .atab {
+      padding:8px 18px; border-radius:var(--r-full);
+      background:transparent; border:1.5px solid var(--border-soft);
+      color:var(--text-muted); font-family:var(--font-body);
+      font-size:0.82rem; font-weight:700; cursor:pointer;
+      transition:all var(--t-mid);
+    }
+    .atab.active { background:rgba(34,197,94,0.1); border-color:var(--green-500); color:var(--green-300); }
+
+    .tab-pane { display:none; }
+    .tab-pane.visible { display:block; }
+
+    .add-task-btn {
+      width:100%; margin-bottom:16px;
+      border:2px dashed var(--border-mid); background:transparent;
+      color:var(--text-muted); padding:12px;
+      border-radius:var(--r-md); cursor:pointer; font-family:var(--font-body);
+      font-size:0.85rem; transition:all var(--t-mid);
+    }
+    .add-task-btn:hover { border-color:var(--green-500); color:var(--green-300); background:rgba(34,197,94,0.05); }
+
+    /* Camera scan area */
+    .scan-area {
+      background:var(--bg-elevated); border:2px dashed var(--border-mid);
+      border-radius:var(--r-lg); padding:32px;
+      text-align:center; cursor:pointer; transition:all var(--t-mid);
+    }
+    .scan-area:hover { border-color:var(--green-500); background:rgba(34,197,94,0.05); }
+    .scan-area .scan-icon { font-size:3rem; margin-bottom:12px; display:block; }
+
+    #camera-preview {
+      width:100%; border-radius:var(--r-md); display:none;
+      border:2px solid var(--green-600); margin-top:12px;
+    }
+
+    /* Sidebar */
+    .agenda-sidebar { display:flex; flex-direction:column; gap:16px; }
+
+    .calendar-mini { padding:20px; }
+    .cal-header { display:flex; align-items:center; justify-content:space-between; margin-bottom:16px; }
+    .cal-title { font-family:var(--font-display); font-weight:800; font-size:0.95rem; }
+    .cal-grid {
+      display:grid; grid-template-columns:repeat(7,1fr); gap:4px;
+      text-align:center; font-size:0.72rem;
+    }
+    .cal-day-name { color:var(--text-muted); font-weight:700; padding-bottom:6px; }
+    .cal-day {
+      padding:6px 4px; border-radius:6px; cursor:pointer;
+      transition:all var(--t-fast); color:var(--text-secondary);
+    }
+    .cal-day:hover { background:var(--bg-elevated); }
+    .cal-day.today {
+      background:var(--green-600); color:white; font-weight:700;
+      border-radius:50%;
+    }
+    .cal-day.has-task { position:relative; }
+    .cal-day.has-task::after {
+      content:''; position:absolute; bottom:1px; left:50%; transform:translateX(-50%);
+      width:3px; height:3px; background:var(--accent-lime); border-radius:50%;
+    }
+
+    .reminder-item {
+      display:flex; align-items:center; gap:10px; padding:10px 12px;
+      background:var(--bg-elevated); border-radius:var(--r-md);
+      font-size:0.82rem; border-left:3px solid var(--accent-amber);
+    }
+
+    @media(max-width:900px) { .agenda-layout { grid-template-columns:1fr; } }
+  </style>
+</head>
+<body>
+  <canvas id="bg-canvas"></canvas>
+  <div id="toast-container"></div>
+
+  <nav class="eco-nav">
+    <div class="container">
+      <a href="inicio.html" class="nav-logo"><div class="logo-dot"></div>EcoAgenda</a>
+      <ul class="nav-links">
+        <li><a href="inicio.html"><span class="nav-icon">🏠</span>Inicio</a></li>
+        <li><a href="agenda.html" class="active"><span class="nav-icon">📝</span>Agenda</a></li>
+        <li><a href="reciclaje.html"><span class="nav-icon">♻️</span>Recicla</a></li>
+        <li><a href="chat.html"><span class="nav-icon">💬</span>Chat</a></li>
+        <li><a href="juego.html"><span class="nav-icon">🎮</span>Juego</a></li>
+        <li><a href="ranking.html"><span class="nav-icon">🏆</span>Ranking</a></li>
+        <li><a href="ecobot.html"><span class="nav-icon">🤖</span>EcoBot</a></li>
+        <li><a href="perfil.html"><span class="nav-icon">👤</span>Perfil</a></li>
+      </ul>
+      <div class="nav-user">
+        <img id="nav-avatar" src="https://ui-avatars.com/api/?name=Eco&background=0b5022&color=86efac&bold=true" class="nav-avatar" onclick="location.href='perfil.html'" />
+      </div>
+    </div>
+  </nav>
+
+  <div class="page-wrap main-content">
+    <div class="container">
+
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;">
+        <div>
+          <h1 class="section-title">📝 Mi Agenda</h1>
+          <p class="section-subtitle">Organiza tus tareas y horario escolar</p>
+        </div>
+        <button class="btn btn-primary" onclick="openAddTask()">+ Nueva tarea</button>
+      </div>
+
+      <!-- Tabs -->
+      <div class="agenda-tabs">
+        <button class="atab active" onclick="switchAgendaTab('tareas',this)">📋 Tareas</button>
+        <button class="atab" onclick="switchAgendaTab('horario',this)">📅 Horario</button>
+        <button class="atab" onclick="switchAgendaTab('scan',this)">📷 Escanear</button>
+        <button class="atab" onclick="switchAgendaTab('recordatorios',this)">🔔 Recordatorios</button>
+      </div>
+
+      <div class="agenda-layout">
+        <!-- Main content -->
+        <div>
+          <!-- TAREAS -->
+          <div class="tab-pane visible" id="pane-tareas">
+            <div style="display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap;">
+              <span class="badge badge-green" style="cursor:pointer" onclick="filterTasks('todas')">Todas</span>
+              <span class="badge badge-amber" style="cursor:pointer" onclick="filterTasks('alta')">🔴 Alta</span>
+              <span class="badge badge-cyan"  style="cursor:pointer" onclick="filterTasks('media')">🟡 Media</span>
+              <span class="badge badge-lime"  style="cursor:pointer" onclick="filterTasks('baja')">🟢 Baja</span>
+            </div>
+
+            <button class="add-task-btn" onclick="openAddTask()">+ Agregar nueva tarea</button>
+
+            <div id="tasks-list" style="display:flex;flex-direction:column;gap:10px;">
+              <!-- Tasks loaded here -->
+              <div style="text-align:center;padding:40px;color:var(--text-muted);">
+                <div style="font-size:2.5rem;margin-bottom:12px;">📭</div>
+                <p>No hay tareas — ¡agrega tu primera!</p>
+              </div>
+            </div>
+          </div>
+
+          <!-- HORARIO -->
+          <div class="tab-pane" id="pane-horario">
+            <div style="overflow-x:auto;">
+              <div class="schedule-grid" id="schedule-grid">
+                <div class="schedule-header"></div>
+                <div class="schedule-header">Lun</div>
+                <div class="schedule-header">Mar</div>
+                <div class="schedule-header">Mié</div>
+                <div class="schedule-header">Jue</div>
+                <div class="schedule-header">Vie</div>
+              </div>
+            </div>
+            <div style="margin-top:16px;text-align:center;">
+              <button class="btn btn-secondary" onclick="switchAgendaTab('scan',document.querySelectorAll('.atab')[2])">
+                📷 Escanear horario con cámara
+              </button>
+            </div>
+          </div>
+
+          <!-- SCAN -->
+          <div class="tab-pane" id="pane-scan">
+            <div class="card">
+              <h3 style="font-family:var(--font-display);margin-bottom:8px;">📷 Escanear horario</h3>
+              <p style="color:var(--text-muted);font-size:0.85rem;margin-bottom:20px;">
+                Apunta la cámara a tu horario impreso y EcoBot lo leerá automáticamente
+              </p>
+
+              <div class="scan-area" onclick="startCamera()">
+                <span class="scan-icon">📸</span>
+                <p style="font-weight:700;">Toca para abrir la cámara</p>
+                <p style="font-size:0.78rem;color:var(--text-muted);margin-top:4px;">
+                  O arrastra una foto del horario
+                </p>
+              </div>
+
+              <video id="camera-preview" autoplay playsinline></video>
+
+              <div id="scan-controls" style="display:none;margin-top:12px;display:none;gap:10px;">
+                <button class="btn btn-primary" onclick="capturePhoto()">📷 Capturar</button>
+                <button class="btn btn-secondary" onclick="stopCamera()">✕ Cancelar</button>
+              </div>
+
+              <canvas id="photo-canvas" style="display:none;width:100%;border-radius:var(--r-md);margin-top:12px;"></canvas>
+
+              <div id="scan-result" style="margin-top:16px;display:none;">
+                <h4 style="margin-bottom:8px;">🤖 EcoBot detectó:</h4>
+                <div id="scan-result-text" style="background:var(--bg-elevated);padding:16px;border-radius:var(--r-md);font-size:0.85rem;line-height:1.8;white-space:pre-wrap;"></div>
+                <button class="btn btn-primary btn-sm" style="margin-top:12px;" onclick="importSchedule()">
+                  ✅ Importar horario
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <!-- RECORDATORIOS -->
+          <div class="tab-pane" id="pane-recordatorios">
+            <div class="card">
+              <h3 style="font-family:var(--font-display);margin-bottom:16px;">🔔 Recordatorios inteligentes</h3>
+              <p style="color:var(--text-muted);font-size:0.85rem;margin-bottom:20px;">
+                EcoAgenda te avisa 24 horas antes de que venza una tarea, igual que Google Classroom
+              </p>
+
+              <button class="btn btn-secondary" style="width:100%;margin-bottom:20px;" onclick="requestNotifs()">
+                🔔 Activar notificaciones
+              </button>
+
+              <div id="reminders-list" style="display:flex;flex-direction:column;gap:8px;">
+                <div class="reminder-item">⏰ <span>Activando recordatorios...</span></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Sidebar -->
+        <div class="agenda-sidebar">
+          <!-- Mini calendar -->
+          <div class="card calendar-mini">
+            <div class="cal-header">
+              <button class="btn btn-ghost btn-sm" onclick="prevMonth()">‹</button>
+              <span class="cal-title" id="cal-month-label">Marzo 2026</span>
+              <button class="btn btn-ghost btn-sm" onclick="nextMonth()">›</button>
+            </div>
+            <div class="cal-grid" id="cal-grid"></div>
+          </div>
+
+          <!-- Quick add -->
+          <div class="card">
+            <h3 style="font-family:var(--font-display);font-size:0.95rem;margin-bottom:14px;">⚡ Agregar rápido</h3>
+            <div class="input-group">
+              <input class="input-field" type="text" id="quick-task-title" placeholder="Título de la tarea" />
+            </div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+              <div class="input-group">
+                <input class="input-field" type="date" id="quick-task-date" />
+              </div>
+              <div class="input-group">
+                <select class="input-field" id="quick-task-prio">
+                  <option value="baja">🟢 Baja</option>
+                  <option value="media">🟡 Media</option>
+                  <option value="alta">🔴 Alta</option>
+                </select>
+              </div>
+            </div>
+            <button class="btn btn-primary" style="width:100%" onclick="quickAdd()">+ Agregar</button>
+          </div>
+
+          <!-- Stats -->
+          <div class="card">
+            <h3 style="font-family:var(--font-display);font-size:0.95rem;margin-bottom:14px;">📊 Esta semana</h3>
+            <div style="display:flex;flex-direction:column;gap:10px;">
+              <div style="display:flex;justify-content:space-between;font-size:0.85rem;">
+                <span>Completadas</span>
+                <span style="color:var(--green-300);font-weight:700;" id="done-count">0</span>
+              </div>
+              <div style="display:flex;justify-content:space-between;font-size:0.85rem;">
+                <span>Pendientes</span>
+                <span style="color:var(--accent-amber);font-weight:700;" id="pending-count">0</span>
+              </div>
+              <div class="xp-bar-wrap"><div class="xp-bar" id="week-bar" style="width:0%"></div></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Add Task Modal -->
+  <div class="modal-overlay" id="task-modal" style="display:none;">
+    <div class="modal-box">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;">
+        <div class="modal-title">➕ Nueva tarea</div>
+        <button class="btn btn-ghost btn-sm" onclick="closeModal('task-modal')">✕</button>
+      </div>
+
+      <div class="input-group">
+        <label class="input-label">Título *</label>
+        <input class="input-field" type="text" id="task-title" placeholder="¿Qué tienes que hacer?" />
+      </div>
+      <div class="input-group">
+        <label class="input-label">Materia</label>
+        <input class="input-field" type="text" id="task-materia" placeholder="Matemáticas, Español..." />
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+        <div class="input-group">
+          <label class="input-label">Fecha de entrega</label>
+          <input class="input-field" type="datetime-local" id="task-date" />
+        </div>
+        <div class="input-group">
+          <label class="input-label">Prioridad</label>
+          <select class="input-field" id="task-prio">
+            <option value="baja">🟢 Baja</option>
+            <option value="media">🟡 Media</option>
+            <option value="alta">🔴 Alta</option>
+          </select>
+        </div>
+      </div>
+      <div class="input-group">
+        <label class="input-label">Notas</label>
+        <textarea class="input-field" id="task-notes" rows="3" placeholder="Detalles adicionales..."></textarea>
+      </div>
+
+      <div style="display:flex;gap:10px;margin-top:8px;">
+        <button class="btn btn-primary" style="flex:1" onclick="saveTask()">💾 Guardar tarea</button>
+        <button class="btn btn-secondary" onclick="closeModal('task-modal')">Cancelar</button>
+      </div>
+    </div>
+  </div>
+
+  <script type="module">
+    import { initParticles, toast, formatDate, isTomorrow, requestNotifications } from '../js/utils.js';
+    import { auth, db } from '../js/firebase.js';
+    import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+    import { collection, addDoc, query, where, getDocs, updateDoc, doc, deleteDoc, serverTimestamp, orderBy } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+    initParticles();
+
+    let currentUID = null;
+    let tasks = [];
+    let calDate = new Date();
+    let cameraStream = null;
+
+    onAuthStateChanged(auth, async (user) => {
+      if (!user) { const d=sessionStorage.getItem('eco_demo'); if(!d) location.href='../index.html'; else { currentUID='demo'; loadDemoTasks(); renderCalendar(); } return; }
+      currentUID = user.uid;
+      await loadTasks();
+      renderCalendar();
+      loadReminders();
+    });
+
+    // ── Calendar ──────────────────────────────────────
+    const MONTHS = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+    const DAYS   = ['D','L','M','X','J','V','S'];
+
+    window.prevMonth = () => { calDate.setMonth(calDate.getMonth()-1); renderCalendar(); };
+    window.nextMonth = () => { calDate.setMonth(calDate.getMonth()+1); renderCalendar(); };
+
+    function renderCalendar() {
+      document.getElementById('cal-month-label').textContent = `${MONTHS[calDate.getMonth()]} ${calDate.getFullYear()}`;
+      const grid = document.getElementById('cal-grid');
+      const today = new Date();
+      const first = new Date(calDate.getFullYear(), calDate.getMonth(), 1);
+      const daysInMonth = new Date(calDate.getFullYear(), calDate.getMonth()+1, 0).getDate();
+      const startDay = first.getDay();
+
+      let html = DAYS.map(d => `<div class="cal-day-name">${d}</div>`).join('');
+
+      for (let i = 0; i < startDay; i++) html += '<div></div>';
+      for (let d = 1; d <= daysInMonth; d++) {
+        const isToday = today.getDate()===d && today.getMonth()===calDate.getMonth() && today.getFullYear()===calDate.getFullYear();
+        const hasTask = tasks.some(t => { const td=new Date(t.fecha); return td.getDate()===d&&td.getMonth()===calDate.getMonth()&&td.getFullYear()===calDate.getFullYear(); });
+        html += `<div class="cal-day${isToday?' today':''}${hasTask?' has-task':''}">${d}</div>`;
+      }
+      grid.innerHTML = html;
+    }
+
+    // ── Tasks ─────────────────────────────────────────
+    async function loadTasks() {
+      try {
+        const q = query(collection(db,'tareas'), where('uid','==',currentUID), orderBy('createdAt','desc'));
+        const snaps = await getDocs(q);
+        tasks = snaps.docs.map(d => ({ id:d.id, ...d.data() }));
+        renderTasks(tasks);
+        updateStats();
+      } catch(e) { console.warn('Firestore error:',e); }
+    }
+
+    function loadDemoTasks() {
+      tasks = [
+        { id:'1', titulo:'Tarea de Matemáticas', materia:'Matemáticas', prioridad:'alta',   fecha:'2026-03-26', done:false },
+        { id:'2', titulo:'Leer capítulo 5',       materia:'Español',     prioridad:'media',  fecha:'2026-03-27', done:false },
+        { id:'3', titulo:'Proyecto de Ciencias',  materia:'Ciencias',    prioridad:'alta',   fecha:'2026-03-28', done:false },
+        { id:'4', titulo:'Actividad de Arte',      materia:'Arte',        prioridad:'baja',   fecha:'2026-03-29', done:true  }
+      ];
+      renderTasks(tasks); updateStats();
+    }
+
+    function renderTasks(list) {
+      const el = document.getElementById('tasks-list');
+      if (!list.length) {
+        el.innerHTML='<div style="text-align:center;padding:40px;color:var(--text-muted)"><div style="font-size:2.5rem;margin-bottom:12px">📭</div><p>No hay tareas — ¡agrega tu primera!</p></div>';
+        return;
+      }
+      el.innerHTML = list.map(t => `
+        <div class="task-card priority-${t.prioridad||'baja'}${t.done?' done':''}" id="tc-${t.id}">
+          <div class="task-check${t.done?' checked':''}" onclick="toggleTask('${t.id}')">${t.done?'✓':''}</div>
+          <div style="flex:1">
+            <div class="task-title">${t.titulo}</div>
+            <div class="task-meta">${t.materia?'📚 '+t.materia+' · ':''}📅 ${t.fecha||'Sin fecha'} · <span class="badge badge-${t.prioridad==='alta'?'rose':t.prioridad==='media'?'amber':'green'}">${t.prioridad||'baja'}</span></div>
+          </div>
+          <button class="btn btn-ghost btn-sm" onclick="deleteTask('${t.id}')">🗑️</button>
+        </div>`).join('');
+    }
+
+    function updateStats() {
+      const done = tasks.filter(t=>t.done).length;
+      const pending = tasks.filter(t=>!t.done).length;
+      document.getElementById('done-count').textContent = done;
+      document.getElementById('pending-count').textContent = pending;
+      const total = tasks.length || 1;
+      document.getElementById('week-bar').style.width = Math.round((done/total)*100)+'%';
+    }
+
+    window.filterTasks = (prio) => renderTasks(prio==='todas' ? tasks : tasks.filter(t=>t.prioridad===prio));
+
+    window.toggleTask = async (id) => {
+      const t = tasks.find(x=>x.id===id);
+      if (!t) return;
+      t.done = !t.done;
+      if (currentUID !== 'demo') {
+        try { await updateDoc(doc(db,'tareas',id),{done:t.done}); } catch(e){}
+      }
+      renderTasks(tasks); updateStats();
+    };
+
+    window.deleteTask = async (id) => {
+      if (!confirm('¿Eliminar esta tarea?')) return;
+      tasks = tasks.filter(x=>x.id!==id);
+      if (currentUID !== 'demo') {
+        try { await deleteDoc(doc(db,'tareas',id)); } catch(e){}
+      }
+      renderTasks(tasks); updateStats();
+    };
+
+    // ── Add task modal ──────────────────────────────
+    window.openAddTask = () => {
+      document.getElementById('task-modal').style.display='flex';
+      // Set default date to tomorrow
+      const t=new Date(); t.setDate(t.getDate()+1);
+      document.getElementById('task-date').value = t.toISOString().slice(0,16);
+    };
+    window.closeModal = id => document.getElementById(id).style.display='none';
+
+    window.saveTask = async () => {
+      const titulo   = document.getElementById('task-title').value.trim();
+      const materia  = document.getElementById('task-materia').value.trim();
+      const fecha    = document.getElementById('task-date').value;
+      const prioridad= document.getElementById('task-prio').value;
+      const notas    = document.getElementById('task-notes').value.trim();
+
+      if (!titulo) { toast('El título es obligatorio','warning'); return; }
+
+      const newTask = { uid:currentUID, titulo, materia, fecha, prioridad, notas, done:false };
+
+      if (currentUID !== 'demo') {
+        try {
+          const ref = await addDoc(collection(db,'tareas'), { ...newTask, createdAt:serverTimestamp() });
+          newTask.id = ref.id;
+        } catch(e) { toast('Error al guardar: '+e.message,'error'); return; }
+      } else { newTask.id = Date.now().toString(); }
+
+      tasks.unshift(newTask);
+      renderTasks(tasks); updateStats(); renderCalendar();
+      closeModal('task-modal');
+      toast('Tarea agregada 📝','success');
+
+      // Clear form
+      ['task-title','task-materia','task-notes'].forEach(id=>document.getElementById(id).value='');
+    };
+
+    window.quickAdd = async () => {
+      const titulo = document.getElementById('quick-task-title').value.trim();
+      if (!titulo) { toast('Escribe un título','warning'); return; }
+      const fecha    = document.getElementById('quick-task-date').value;
+      const prioridad= document.getElementById('quick-task-prio').value;
+      const newTask  = { uid:currentUID, titulo, fecha, prioridad, done:false, materia:'' };
+      if (currentUID!=='demo') {
+        try { const r=await addDoc(collection(db,'tareas'),{...newTask,createdAt:serverTimestamp()}); newTask.id=r.id; }
+        catch(e){ toast('Error: '+e.message,'error'); return; }
+      } else { newTask.id=Date.now().toString(); }
+      tasks.unshift(newTask);
+      renderTasks(tasks); updateStats(); renderCalendar();
+      document.getElementById('quick-task-title').value='';
+      toast('✅ Tarea agregada','success');
+    };
+
+    // ── Camera / Scan ────────────────────────────────
+    window.startCamera = async () => {
+      try {
+        cameraStream = await navigator.mediaDevices.getUserMedia({ video:{ facingMode:'environment' } });
+        const vid = document.getElementById('camera-preview');
+        vid.srcObject = cameraStream; vid.style.display='block';
+        document.getElementById('scan-controls').style.display='flex';
+        toast('📷 Cámara lista','info');
+      } catch(e) { toast('Sin acceso a la cámara: '+e.message,'error'); }
+    };
+
+    window.stopCamera = () => {
+      if (cameraStream) { cameraStream.getTracks().forEach(t=>t.stop()); cameraStream=null; }
+      const vid = document.getElementById('camera-preview');
+      vid.style.display='none';
+      document.getElementById('scan-controls').style.display='none';
+    };
+
+    window.capturePhoto = async () => {
+      const vid = document.getElementById('camera-preview');
+      const canvas = document.getElementById('photo-canvas');
+      canvas.width=vid.videoWidth; canvas.height=vid.videoHeight;
+      canvas.getContext('2d').drawImage(vid,0,0);
+      canvas.style.display='block';
+      stopCamera();
+
+      toast('🤖 EcoBot analizando el horario...','info');
+      document.getElementById('scan-result').style.display='block';
+
+      // Call Claude API to analyze the schedule image
+      const imageData = canvas.toDataURL('image/jpeg').split(',')[1];
+      try {
+        const resp = await fetch('https://api.anthropic.com/v1/messages', {
+          method:'POST',
+          headers:{'Content-Type':'application/json'},
+          body:JSON.stringify({
+            model:'claude-sonnet-4-20250514',
+            max_tokens:1000,
+            messages:[{
+              role:'user',
+              content:[
+                { type:'image', source:{ type:'base64', media_type:'image/jpeg', data:imageData } },
+                { type:'text', text:'Analiza este horario escolar y extrae: días de la semana, horas y materias en formato de tabla legible. Si no es un horario, dilo. Responde en español.' }
+              ]
+            }]
+          })
+        });
+        const data = await resp.json();
+        document.getElementById('scan-result-text').textContent = data.content?.[0]?.text || 'No se pudo analizar la imagen';
+      } catch(e) {
+        document.getElementById('scan-result-text').textContent = 'Error al conectar con EcoBot. Verifica tu conexión.';
+      }
+    };
+
+    window.importSchedule = () => {
+      toast('📅 Horario importado a tu agenda','success');
+      renderScheduleGrid();
+      switchAgendaTab('horario', document.querySelectorAll('.atab')[1]);
+    };
+
+    // ── Schedule grid ────────────────────────────────
+    function renderScheduleGrid() {
+      const grid = document.getElementById('schedule-grid');
+      const hours = ['7:00','8:00','9:00','10:00','11:00','12:00','13:00','14:00'];
+      let html = '<div class="schedule-header"></div>';
+      ['Lun','Mar','Mié','Jue','Vie'].forEach(d=>{ html+=`<div class="schedule-header">${d}</div>`; });
+      hours.forEach(h => {
+        html += `<div class="schedule-time">${h}</div>`;
+        for(let i=0;i<5;i++) html+='<div class="schedule-cell"></div>';
+      });
+      grid.innerHTML = html;
+    }
+
+    // ── Reminders ────────────────────────────────────
+    function loadReminders() {
+      const el = document.getElementById('reminders-list');
+      const upcoming = tasks.filter(t=>!t.done && t.fecha).sort((a,b)=>new Date(a.fecha)-new Date(b.fecha)).slice(0,5);
+      if (!upcoming.length) { el.innerHTML='<div style="color:var(--text-muted);font-size:0.85rem;">Sin recordatorios próximos</div>'; return; }
+      el.innerHTML = upcoming.map(t=>`
+        <div class="reminder-item">
+          ⏰ <span><b>${t.titulo}</b> — ${t.fecha}</span>
+        </div>`).join('');
+    }
+
+    window.requestNotifs = async () => {
+      await requestNotifications();
+      toast('🔔 Notificaciones activadas','success');
+    };
+
+    // ── Tab switching ─────────────────────────────────
+    window.switchAgendaTab = (tab, btn) => {
+      document.querySelectorAll('.atab').forEach(b=>b.classList.remove('active'));
+      document.querySelectorAll('.tab-pane').forEach(p=>p.classList.remove('visible'));
+      if (btn) btn.classList.add('active');
+      document.getElementById('pane-'+tab).classList.add('visible');
+    };
+
+    // Init schedule grid
+    renderScheduleGrid();
+  </script>
+</body>
+</html>
