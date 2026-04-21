@@ -46,7 +46,7 @@ exports.handler = async function(event) {
     }
 
     // Usar v1beta para mayor compatibilidad con systemInstruction y modelos nuevos
-    const modelName = body.model || 'gemini-1.5-flash';
+    const modelName = 'gemini-2.0-flash';
     const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${API_KEY}`;
     
     console.log("Llamando a Gemini v1beta con modelo:", modelName);
