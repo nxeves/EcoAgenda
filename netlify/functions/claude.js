@@ -9,8 +9,17 @@ exports.handler = async function(event) {
   if (event.httpMethod === 'OPTIONS') return { statusCode: 200, headers, body: '' };
 
   try {
-    // Prioridad a la variable de entorno de Netlify por seguridad
-    const API_KEY = process.env.GEMINI_API_KEY || "AIzaSyD_lO2vA5tz3QY0eWqn7Jh7RSUk66YJOkM";
+    // Rely ONLY on the environment variable for security
+    const API_KEY = process.env.GEMINI_API_KEY;
+    
+    if (!API_KEY) {
+      return {
+        statusCode: 500,
+        headers,
+        body: JSON.stringify({ error: "API Key not configured in Netlify environment variables." })
+      };
+    }
+
     const body = JSON.parse(event.body || '{}');
     const messages = body.messages || [];
     const lastMessage = messages[messages.length - 1];

@@ -391,7 +391,7 @@ Responde en español.`
       conversationHistory.push({ role:'user', content:userContent });
 
       try {
-        const resp = await fetch('/.netlify/functions/claude',{
+        const resp = await fetch(window.location.origin + '/.netlify/functions/claude',{
           method:'POST',
           headers:{ 'Content-Type':'application/json' },
           body:JSON.stringify({
