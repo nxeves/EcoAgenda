@@ -414,11 +414,16 @@
         closeModal('create-modal'); return;
       }
 
-      const roomRef = push(ref(rtdb,'rooms'));
-      await set(roomRef, roomData);
-      await set(ref(rtdb, `userRooms/${currentUser.uid}/${roomRef.key}`), roomData);
-      closeModal('create-modal');
-      toast(`Sala creada 🎉 Código: ${code}`, 'success');
+      try {
+        const roomRef = push(ref(rtdb,'rooms'));
+        await set(roomRef, roomData);
+        await set(ref(rtdb, `userRooms/${currentUser.uid}/${roomRef.key}`), roomData);
+        closeModal('create-modal');
+        toast(`Sala creada 🎉 Código: ${code}`, 'success');
+      } catch(e) {
+        console.error(e);
+        toast('Error al crear la sala en Firebase','error');
+      }
     };
 
     window.joinRoom = async () => {

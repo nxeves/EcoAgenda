@@ -466,10 +466,17 @@
       if (!name) { toast('El nombre es obligatorio','warning'); return; }
       userData.displayName=name; userData.username=uname; userData.escuela=school;
       if (currentUser.uid !== 'demo') {
-        try { await updateDoc(doc(db,'users',currentUser.uid),{ displayName:name, username:uname, escuela:school }); } catch(e){}
+        try { 
+          await updateDoc(doc(db,'users',currentUser.uid),{ displayName:name, username:uname, escuela:school }); 
+          toast('Perfil actualizado ✅','success');
+        } catch(e){
+          console.error(e);
+          toast('Error al guardar en base de datos','error');
+        }
+      } else {
+        toast('Perfil actualizado (modo demo)','success');
       }
       renderProfile(); closeModal();
-      toast('Perfil actualizado ✅','success');
     };
 
     window.changeAvatar = async (input) => {

@@ -45,21 +45,31 @@ exports.handler = async function(event) {
       }
     }
 
-    const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${API_KEY}`;
+    // Usar v1beta para mayor compatibilidad con systemInstruction y modelos nuevos
+    const modelName = body.model || 'gemini-1.5-flash';
+    const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${API_KEY}`;
     
+    console.log("Llamando a Gemini v1beta con modelo:", modelName);
+
     const response = await fetch(apiUrl, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ 
         contents,
-        systemInstruction: { parts: [{ text: body.system || "Eres EcoBot, un asistente experto en ecología." }] }
+        systemInstruction: { parts: [{ text: body.system || "Eres EcoBot, un asistente experto en ecología." }] },
+        generationConfig: {
+          maxOutputTokens: body.max_tokens || 1000,
+          temperature: 0.7
+        }
       })
     });
 
     const data = await response.json();
     
-    if (data.error) {
-      throw new Error(data.error.message || "Error en la API de Gemini");
+    if (!response.ok || data.error) {
+      const errorMsg = data.error?.message || data.error || "Error desconocido en la API de Gemini";
+      console.error("Error de Gemini API:", errorMsg);
+      throw new Error(errorMsg);
     }
 
     const text = data.candidates?.[0]?.content?.parts?.[0]?.text || "Lo siento, no pude generar una respuesta.";
