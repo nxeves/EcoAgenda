@@ -9,71 +9,73 @@ exports.handler = async function(event) {
   if (event.httpMethod === 'OPTIONS') return { statusCode: 200, headers, body: '' };
 
   try {
-    // Rely ONLY on the environment variable for security
-    const API_KEY = process.env.GEMINI_API_KEY;
+    const API_KEY = process.env.GROQ_API_KEY;
     
     if (!API_KEY) {
       return {
         statusCode: 500,
         headers,
-        body: JSON.stringify({ error: "API Key not configured in Netlify environment variables." })
+        body: JSON.stringify({ error: "API Key not configured in Netlify environment variables (GROQ_API_KEY)." })
       };
     }
 
     const body = JSON.parse(event.body || '{}');
     const messages = body.messages || [];
-    const lastMessage = messages[messages.length - 1];
-
-    if (!lastMessage) throw new Error("No hay mensajes en la solicitud");
-
-    // Preparar contenido para la API REST de Gemini
-    let contents = messages.map(m => ({
-      role: m.role === 'assistant' ? 'model' : 'user',
-      parts: [{ text: typeof m.content === 'string' ? m.content : (m.content.find(p => p.type === 'text')?.text || "Analiza esto") }]
-    }));
-
-    // Si hay imagen (formato multimodal), Gemini requiere un formato especial
-    if (Array.isArray(lastMessage.content)) {
-      const imgPart = lastMessage.content.find(p => p.type === 'image');
-      const textPart = lastMessage.content.find(p => p.type === 'text');
-      
-      if (imgPart && imgPart.source && imgPart.source.data) {
-        contents[contents.length - 1].parts = [
-          { text: textPart ? textPart.text : "Analiza esta imagen" },
-          { inline_data: { mime_type: "image/jpeg", data: imgPart.source.data } }
-        ];
-      }
+    
+    // Convertir el historial de mensajes al formato de Groq (OpenAI-like)
+    let chatMessages = [];
+    
+    // Agregar instrucción del sistema si existe
+    if (body.system) {
+      chatMessages.push({ role: "system", content: body.system });
     }
 
-    // Usar v1beta para mayor compatibilidad con systemInstruction y modelos nuevos
-    const modelName = 'gemini-2.0-flash';
-    const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${API_KEY}`;
+    // Mapear mensajes previos
+    messages.forEach(m => {
+      let content = "";
+      if (typeof m.content === 'string') {
+        content = m.content;
+      } else if (Array.isArray(m.content)) {
+        // Groq llama-3.1-8b-instant es principalmente texto, extraemos el texto
+        const textPart = m.content.find(p => p.type === 'text');
+        content = textPart ? textPart.text : "Analiza esto";
+      }
+      
+      chatMessages.push({
+        role: m.role === 'assistant' ? 'assistant' : 'user',
+        content: content
+      });
+    });
+
+    const apiUrl = 'https://api.groq.com/openai/v1/chat/completions';
     
-    console.log("Llamando a Gemini v1beta con modelo:", modelName);
+    console.log("Llamando a Groq con modelo: llama-3.1-8b-instant");
 
     const response = await fetch(apiUrl, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${API_KEY}`
+      },
       body: JSON.stringify({ 
-        contents,
-        systemInstruction: { parts: [{ text: body.system || "Eres EcoBot, un asistente experto en ecología." }] },
-        generationConfig: {
-          maxOutputTokens: body.max_tokens || 1000,
-          temperature: 0.7
-        }
+        model: 'llama-3.1-8b-instant',
+        messages: chatMessages,
+        max_tokens: body.max_tokens || 1000,
+        temperature: 0.7
       })
     });
 
     const data = await response.json();
     
     if (!response.ok || data.error) {
-      const errorMsg = data.error?.message || data.error || "Error desconocido en la API de Gemini";
-      console.error("Error de Gemini API:", errorMsg);
+      const errorMsg = data.error?.message || data.error || "Error desconocido en la API de Groq";
+      console.error("Error de Groq API:", errorMsg);
       throw new Error(errorMsg);
     }
 
-    const text = data.candidates?.[0]?.content?.parts?.[0]?.text || "Lo siento, no pude generar una respuesta.";
+    const text = data.choices?.[0]?.message?.content || "Lo siento, no pude generar una respuesta.";
 
+    // Mantener el formato de respuesta original para que ecobot.html no falle
     return {
       statusCode: 200,
       headers,
@@ -83,7 +85,7 @@ exports.handler = async function(event) {
     };
 
   } catch(e) {
-    console.error("Error en función EcoBot:", e);
+    console.error("Error en función EcoBot (Groq):", e);
     return {
       statusCode: 500,
       headers,
