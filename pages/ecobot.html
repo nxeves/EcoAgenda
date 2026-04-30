@@ -171,6 +171,19 @@
     .mode-icon { font-size:1.3rem; }
 
     @media(max-width:900px) { .bot-layout{grid-template-columns:1fr;} .bot-sidebar{display:none;} }
+
+    @media(max-width: 414px) {
+      .bot-window { height: calc(100vh - var(--nav-h) - 160px); min-height: 400px; }
+      .bot-header { padding: 12px 16px; }
+      .bot-logo { width: 36px; height: 36px; font-size: 1.1rem; }
+      .bot-messages { padding: 16px; gap: 12px; }
+      .bot-bubble, .user-bubble-bot { font-size: 0.82rem; padding: 10px 14px; }
+      .bot-input-area { padding: 10px 14px; gap: 8px; }
+      .bot-input { font-size: 0.85rem; padding: 10px 12px; }
+      .send-btn, .cam-btn { width: 40px; height: 40px; font-size: 1rem; }
+      .section-title { font-size: 1.4rem; }
+      .section-subtitle { font-size: 0.8rem; }
+    }
   </style>
 </head>
 <body>

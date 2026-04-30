@@ -107,6 +107,25 @@
       100%{ opacity:0; transform:translateY(80px) scale(0.5) rotate(360deg); }
     }
 
+    @media (max-width: 414px) {
+      .game-header-bar { padding: 10px 12px; margin-bottom: 12px; gap: 8px; }
+      .game-stat-val { font-size: 1.1rem; }
+      .game-stat-lbl { font-size: 0.6rem; }
+      .level-badge { padding: 4px 10px; font-size: 0.75rem; }
+      
+      .game-arena { min-height: 250px; }
+      .falling-area { height: 250px; }
+      .waste-item { width: 55px; height: 55px; font-size: 1.5rem; }
+      .waste-item span.wi-label { font-size: 0.5rem; }
+      
+      .bins-row-game { padding: 10px; gap: 6px; }
+      .game-bin-drop { min-width: 75px; padding: 10px 6px; font-size: 0.65rem; }
+      .game-bin-drop .bin-emoji { font-size: 1.8rem; }
+      
+      .section-title { font-size: 1.4rem; }
+      .section-subtitle { font-size: 0.8rem; }
+    }
+
     /* Game over overlay */
     .game-over {
       position:absolute; inset:0;

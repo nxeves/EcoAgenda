@@ -78,6 +78,28 @@
     }
 
     @media(max-width:900px) { .agenda-layout { grid-template-columns:1fr; } }
+
+    @media(max-width: 414px) {
+      .agenda-tabs { 
+        gap: 4px; 
+        overflow-x: auto; 
+        padding-bottom: 8px;
+        margin-bottom: 16px;
+      }
+      .atab { 
+        padding: 6px 12px; 
+        font-size: 0.75rem; 
+        white-space: nowrap;
+      }
+      .section-title { font-size: 1.4rem; }
+      .section-subtitle { font-size: 0.8rem; }
+      .agenda-sidebar { gap: 12px; }
+      .calendar-mini { padding: 12px; }
+      .cal-title { font-size: 0.85rem; }
+      .cal-grid { font-size: 0.65rem; gap: 2px; }
+      .scan-area { padding: 20px; }
+      .scan-icon { font-size: 2rem; }
+    }
   </style>
 </head>
 <body>
@@ -204,7 +226,7 @@
             <div class="card">
               <h3 style="font-family:var(--font-display);margin-bottom:16px;">🔔 Recordatorios inteligentes</h3>
               <p style="color:var(--text-muted);font-size:0.85rem;margin-bottom:20px;">
-                EcoAgenda te avisa 24 horas antes de que venza una tarea, igual que Google Classroom
+                EcoAgenda te avisa 1 día antes, 1 hora antes y cada mañana a las 7:00 con tu horario/tareas del día.
               </p>
 
               <button class="btn btn-secondary" style="width:100%;margin-bottom:20px;" onclick="requestNotifs()">
@@ -314,8 +336,8 @@
   </div>
 
   <script type="module">
-    import { initParticles, toast, formatDate, isTomorrow, requestNotifications } from '../js/utils.js';
-    import { auth, db } from '../js/firebase.js';
+    import { initParticles, toast, requestNotifications, runSmartReminders, initPushNotifications } from '../js/utils.js';
+    import { app, auth, db } from '../js/firebase.js';
     import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
     import { collection, addDoc, query, where, getDocs, updateDoc, doc, deleteDoc, serverTimestamp, orderBy } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
@@ -325,6 +347,7 @@
     let tasks = [];
     let calDate = new Date();
     let cameraStream = null;
+    let remindersTimer = null;
 
     onAuthStateChanged(auth, async (user) => {
       if (!user) { const d=sessionStorage.getItem('eco_demo'); if(!d) location.href='../index.html'; else { currentUID='demo'; loadDemoTasks(); renderCalendar(); } return; }
@@ -332,7 +355,34 @@
       await loadTasks();
       renderCalendar();
       loadReminders();
+      await bootAgendaNotifications();
     });
+
+    async function bootAgendaNotifications() {
+      if (!currentUID || currentUID === 'demo') return;
+      const pushState = await initPushNotifications({
+        app,
+        db,
+        uid: currentUID,
+        onForegroundMessage: (payload) => {
+          const body = payload?.notification?.body || 'Nueva notificación';
+          toast(body, 'info');
+        }
+      });
+
+      evalRemindersNow();
+      if (remindersTimer) clearInterval(remindersTimer);
+      remindersTimer = setInterval(evalRemindersNow, 60 * 1000);
+
+      if (!pushState.enabled) {
+        console.warn('Push init:', pushState.reason || 'disabled');
+      }
+    }
+
+    function evalRemindersNow() {
+      try { runSmartReminders(tasks); } catch(e) { console.warn('Reminder check:', e); }
+      loadReminders();
+    }
 
     // ── Calendar ──────────────────────────────────────
     const MONTHS = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
@@ -417,6 +467,7 @@
         try { await updateDoc(doc(db,'tareas',id),{done:t.done}); } catch(e){}
       }
       renderTasks(tasks); updateStats();
+      evalRemindersNow();
     };
 
     window.deleteTask = async (id) => {
@@ -426,6 +477,7 @@
         try { await deleteDoc(doc(db,'tareas',id)); } catch(e){}
       }
       renderTasks(tasks); updateStats();
+      evalRemindersNow();
     };
 
     // ── Add task modal ──────────────────────────────
@@ -457,6 +509,7 @@
 
       tasks.unshift(newTask);
       renderTasks(tasks); updateStats(); renderCalendar();
+      evalRemindersNow();
       closeModal('task-modal');
       toast('Tarea agregada 📝','success');
 
@@ -476,6 +529,7 @@
       } else { newTask.id=Date.now().toString(); }
       tasks.unshift(newTask);
       renderTasks(tasks); updateStats(); renderCalendar();
+      evalRemindersNow();
       document.getElementById('quick-task-title').value='';
       toast('✅ Tarea agregada','success');
     };
@@ -567,6 +621,8 @@
 
     window.requestNotifs = async () => {
       await requestNotifications();
+      await bootAgendaNotifications();
+      evalRemindersNow();
       toast('🔔 Notificaciones activadas','success');
     };
 
