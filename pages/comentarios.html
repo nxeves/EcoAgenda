@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>EcoAgenda - Comentarios</title>
+  <link rel="stylesheet" href="../css/global.css" />
+  <link rel="stylesheet" href="../css/componentes.css" />
+  <style>
+    .feedback-layout {
+      display: grid;
+      grid-template-columns: minmax(280px, 460px) 1fr;
+      gap: 18px;
+    }
+    .helper-text {
+      color: var(--text-muted);
+      font-size: 0.82rem;
+      margin-top: 6px;
+    }
+    .owner-panel {
+      min-height: 240px;
+    }
+    .feedback-list {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      margin-top: 10px;
+    }
+    .feedback-item {
+      background: var(--bg-elevated);
+      border: 1px solid var(--border-soft);
+      border-radius: var(--r-md);
+      padding: 12px;
+    }
+    .feedback-head {
+      display: flex;
+      justify-content: space-between;
+      gap: 10px;
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      margin-bottom: 6px;
+    }
+    .feedback-msg {
+      font-size: 0.87rem;
+      white-space: pre-wrap;
+      line-height: 1.5;
+    }
+    @media (max-width: 900px) {
+      .feedback-layout { grid-template-columns: 1fr; }
+    }
+    @media (max-width: 414px) {
+      .feedback-layout { gap: 12px; }
+    }
+  </style>
+</head>
+<body>
+  <canvas id="bg-canvas"></canvas>
+  <div id="toast-container"></div>
+
+  <nav class="eco-nav">
+    <div class="container">
+      <a href="inicio.html" class="nav-logo"><div class="logo-dot"></div>EcoAgenda</a>
+      <ul class="nav-links">
+        <li><a href="inicio.html"><span class="nav-icon">🏠</span>Inicio</a></li>
+        <li><a href="agenda.html"><span class="nav-icon">📝</span>Agenda</a></li>
+        <li><a href="reciclaje.html"><span class="nav-icon">♻️</span>Recicla</a></li>
+        <li><a href="chat.html"><span class="nav-icon">💬</span>Chat</a></li>
+        <li><a href="juego.html"><span class="nav-icon">🎮</span>Juego</a></li>
+        <li><a href="ranking.html"><span class="nav-icon">🏆</span>Ranking</a></li>
+        <li><a href="ecobot.html"><span class="nav-icon">🤖</span>EcoBot</a></li>
+        <li><a href="comentarios.html" class="active"><span class="nav-icon">💭</span>Comentarios</a></li>
+        <li><a href="perfil.html"><span class="nav-icon">👤</span>Perfil</a></li>
+      </ul>
+      <div class="nav-user">
+        <img id="nav-avatar" src="https://ui-avatars.com/api/?name=Eco&background=0b5022&color=86efac&bold=true" class="nav-avatar" />
+      </div>
+    </div>
+  </nav>
+
+  <div class="page-wrap main-content">
+    <div class="container">
+      <h1 class="section-title">💭 Comentarios Anónimos</h1>
+      <p class="section-subtitle">Ayúdanos a mejorar EcoAgenda. Tu mensaje se guarda sin mostrar tu nombre.</p>
+
+      <div class="feedback-layout">
+        <div class="card">
+          <h3 style="font-family:var(--font-display);margin-bottom:10px;">✍️ Enviar comentario</h3>
+          <div class="input-group">
+            <label class="input-label">Tipo</label>
+            <select id="fb-type" class="input-field">
+              <option value="mejora">Mejora</option>
+              <option value="error">Error o bug</option>
+              <option value="idea">Nueva idea</option>
+              <option value="otro">Otro</option>
+            </select>
+          </div>
+          <div class="input-group">
+            <label class="input-label">Mensaje</label>
+            <textarea id="fb-message" class="input-field" rows="7" maxlength="900" placeholder="Cuéntanos qué mejorar, qué falta o qué función quieres..."></textarea>
+            <div class="helper-text">Máximo 900 caracteres. El equipo verá este mensaje de forma anónima.</div>
+          </div>
+          <button class="btn btn-primary" style="width:100%;" onclick="sendFeedback()">Enviar comentario</button>
+        </div>
+
+        <div class="card">
+          <h3 style="font-family:var(--font-display);margin-bottom:10px;">💭 Comentarios de la comunidad</h3>
+          <div id="public-comments-list" class="feedback-list">
+            <div style="color:var(--text-muted);font-size:0.85rem;">Cargando comentarios...</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script type="module">
+    import { initParticles, toast } from '../js/utils.js';
+    import { auth, db } from '../js/firebase.js';
+    import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+    import { addDoc, collection, onSnapshot, orderBy, query, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+    initParticles();
+
+    let currentUser = null;
+
+    function anonRef(uid = '') {
+      const raw = String(uid || 'anon');
+      const safe = btoa(unescape(encodeURIComponent(raw))).replace(/=/g, '');
+      return `anon-${safe.slice(0, 10)}`;
+    }
+
+    function esc(text = '') {
+      return String(text)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;');
+    }
+
+    onAuthStateChanged(auth, (user) => {
+      if (!user) {
+        if (!sessionStorage.getItem('eco_demo')) {
+          location.href = '../index.html';
+          return;
+        }
+        currentUser = { uid: 'demo', email: '' };
+      } else {
+        currentUser = user;
+        if (user.photoURL) document.getElementById('nav-avatar').src = user.photoURL;
+      }
+      loadPublicComments();
+    });
+
+    window.sendFeedback = async () => {
+      const type = document.getElementById('fb-type').value;
+      const message = document.getElementById('fb-message').value.trim();
+      if (message.length < 8) {
+        toast('Escribe un comentario un poco más detallado', 'warning');
+        return;
+      }
+      if (!currentUser || currentUser.uid === 'demo') {
+        toast('Inicia sesión para enviar comentarios', 'warning');
+        return;
+      }
+      try {
+        await addDoc(collection(db, 'feedback_comments'), {
+          type,
+          message,
+          createdAt: serverTimestamp(),
+          createdAtMs: Date.now(),
+          status: 'nuevo',
+          isAnonymous: true,
+          anonRef: anonRef(currentUser.uid)
+        });
+        document.getElementById('fb-message').value = '';
+        toast('Gracias por tu comentario. Se envió de forma anónima ✅', 'success');
+      } catch (e) {
+        toast('No se pudo enviar el comentario', 'error');
+      }
+    };
+
+    function loadPublicComments() {
+      const list = document.getElementById('public-comments-list');
+      list.innerHTML = '<div style="color:var(--text-muted);font-size:0.85rem;">Cargando comentarios...</div>';
+
+      const q = query(collection(db, 'feedback_comments'), orderBy('createdAtMs', 'desc'));
+      onSnapshot(q, (snap) => {
+        const items = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+        if (!items.length) {
+          list.innerHTML = '<div style="color:var(--text-muted);font-size:0.85rem;">Aún no hay comentarios enviados.</div>';
+          return;
+        }
+        list.innerHTML = items.map((item) => {
+          const dt = item.createdAtMs ? new Date(item.createdAtMs).toLocaleString('es-MX') : 'Sin fecha';
+          return `
+            <div class="feedback-item">
+              <div class="feedback-head">
+                <span>${esc(item.type || 'otro')}</span>
+                <span>${esc(dt)}</span>
+              </div>
+              <div class="feedback-msg">${esc(item.message || '')}</div>
+            </div>`;
+        }).join('');
+      }, (error) => {
+        console.error("Error loading public comments:", error);
+        list.innerHTML = '<div style="color:var(--accent-rose);font-size:0.85rem;">Error al cargar los comentarios.</div>';
+      });
+    }
+  </script>
+</body>
+</html>

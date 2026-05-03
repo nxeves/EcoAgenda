@@ -6,7 +6,7 @@
   <title>EcoAgenda — Perfil</title>
   <link rel="stylesheet" href="../css/global.css" />
   <link rel="stylesheet" href="../css/componentes.css" />
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
   <style>
     .profile-layout { display:grid; grid-template-columns:320px 1fr; gap:20px; }
 
@@ -183,6 +183,7 @@
         <li><a href="juego.html"><span class="nav-icon">🎮</span>Juego</a></li>
         <li><a href="ranking.html"><span class="nav-icon">🏆</span>Ranking</a></li>
         <li><a href="ecobot.html"><span class="nav-icon">🤖</span>EcoBot</a></li>
+        <li><a href="comentarios.html"><span class="nav-icon">💭</span>Comentarios</a></li>
         <li><a href="perfil.html" class="active"><span class="nav-icon">👤</span>Perfil</a></li>
       </ul>
       <div class="nav-user">
@@ -392,8 +393,8 @@
   <script type="module">
     import { initParticles, toast, getRank, getRankProgress } from '../js/utils.js';
     import { auth, db } from '../js/firebase.js';
-    import { onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
-    import { doc, getDoc, updateDoc } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+    import { onAuthStateChanged, signOut, updateProfile } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+    import { doc, getDoc, setDoc } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
     initParticles();
 
@@ -423,8 +424,18 @@
         return;
       }
       currentUser = user;
-      const snap = await getDoc(doc(db,'users',user.uid));
-      userData = snap.exists() ? snap.data() : { displayName:user.displayName||'EcoHéroe', puntos:0 };
+      const userRef = doc(db, 'users', user.uid);
+      const snap = await getDoc(userRef);
+      const defaultUserData = {
+        displayName: user.displayName || 'EcoHéroe',
+        username: (user.email || '').split('@')[0] || 'ecousuario',
+        escuela: '',
+        numControl: '',
+        puntos: 0,
+        photoURL: user.photoURL || ''
+      };
+      userData = snap.exists() ? { ...defaultUserData, ...snap.data() } : defaultUserData;
+      await setDoc(userRef, userData, { merge: true });
       renderProfile();
     });
 
@@ -443,7 +454,7 @@
       // Update QR data
       document.getElementById('qr-name-display').textContent = displayName;
       document.getElementById('qr-control-display').textContent = numControl || '00000000';
-      generateQR(displayName, numControl || '00000000');
+      ensureQR(displayName, numControl || '00000000');
 
       const rank = getRank(puntos); const pct = getRankProgress(puntos);
       document.getElementById('profile-rank').textContent = rank.icon + ' ' + rank.name;
@@ -506,6 +517,9 @@
       document.querySelectorAll('.ptab-pane').forEach(p=>p.classList.remove('visible'));
       btn.classList.add('active');
       document.getElementById('ptab-'+tab).classList.add('visible');
+      if (tab === 'mi-qr') {
+        setTimeout(() => ensureQR(userData?.displayName || 'EcoHéroe', userData?.numControl || '00000000'), 30);
+      }
     };
 
     window.openEdit = () => {
@@ -532,12 +546,13 @@
 
       if (currentUser.uid !== 'demo') {
         try { 
-          await updateDoc(doc(db,'users',currentUser.uid), { 
+          await setDoc(doc(db,'users',currentUser.uid), { 
             displayName: name, 
             username: uname, 
             escuela: school,
             numControl: control
-          }); 
+          }, { merge: true });
+          try { await updateProfile(currentUser, { displayName: name }); } catch (_) {}
           toast('Perfil actualizado ✅','success');
         } catch(e){
           console.error(e);
@@ -559,7 +574,7 @@
         userData.photoURL = base64URL;
         if (currentUser.uid !== 'demo') {
           try {
-            await updateDoc(doc(db,'users',currentUser.uid),{ photoURL: base64URL });
+            await setDoc(doc(db,'users',currentUser.uid),{ photoURL: base64URL }, { merge: true });
             toast('Foto actualizada ✅','success');
           } catch(e) { toast('Error al guardar foto','error'); }
         } else { toast('Foto actualizada (demo)','info'); }
@@ -571,14 +586,32 @@
     function generateQR(name, control) {
       const qrContainer = document.getElementById('qrcode');
       qrContainer.innerHTML = '';
-      qrInstance = new QRCode(qrContainer, {
+      qrInstance = new window.QRCode(qrContainer, {
         text: `Nombre: ${name}\nControl: ${control}`,
         width: 180,
         height: 180,
         colorDark : "#064e3b",
         colorLight : "#ffffff",
-        correctLevel : QRCode.CorrectLevel.H
+        correctLevel : window.QRCode.CorrectLevel.H
       });
+    }
+
+    function generateQRFallback(name, control) {
+      const qrContainer = document.getElementById('qrcode');
+      const payload = encodeURIComponent(`Nombre: ${name}\nControl: ${control}`);
+      qrContainer.innerHTML = `<img alt="QR EcoAgenda" width="180" height="180" src="https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${payload}" />`;
+    }
+
+    function ensureQR(name, control) {
+      try {
+        if (window.QRCode) {
+          generateQR(name, control);
+        } else {
+          generateQRFallback(name, control);
+        }
+      } catch (_) {
+        generateQRFallback(name, control);
+      }
     }
 
     window.toggleSetting = (el, key) => {
@@ -601,3 +634,5 @@
   </script>
 </body>
 </html>
+
+

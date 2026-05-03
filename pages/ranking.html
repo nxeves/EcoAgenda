@@ -108,6 +108,7 @@
         <li><a href="juego.html"><span class="nav-icon">🎮</span>Juego</a></li>
         <li><a href="ranking.html" class="active"><span class="nav-icon">🏆</span>Ranking</a></li>
         <li><a href="ecobot.html"><span class="nav-icon">🤖</span>EcoBot</a></li>
+        <li><a href="comentarios.html"><span class="nav-icon">💭</span>Comentarios</a></li>
         <li><a href="perfil.html"><span class="nav-icon">👤</span>Perfil</a></li>
       </ul>
       <div class="nav-user">
@@ -192,32 +193,18 @@
     import { initParticles, toast, getRank } from '../js/utils.js';
     import { auth, db } from '../js/firebase.js';
     import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
-    import { collection, query, orderBy, limit, getDocs, onSnapshot } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+    import { collection, query, orderBy, limit, onSnapshot } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
     initParticles();
 
     let currentUID = null;
     let allUsers = [];
 
-    // Demo data fallback
-    const DEMO_USERS = [
-      { uid:'u1', displayName:'EcoGuardián',  puntos:2450, rank:'🌍', avatar:'🌍' },
-      { uid:'u2', displayName:'ArbolFuerte',   puntos:1820, rank:'🌳', avatar:'🌳' },
-      { uid:'u3', displayName:'PlantaVerde',   puntos:1640, rank:'🌳', avatar:'🌿' },
-      { uid:'u4', displayName:'SemillaNueva',  puntos:820,  rank:'🌳', avatar:'🌱' },
-      { uid:'u5', displayName:'EcoNinja',      puntos:560,  rank:'🌿', avatar:'🎋' },
-      { uid:'u6', displayName:'TerraFirme',    puntos:430,  rank:'🌿', avatar:'🏔️' },
-      { uid:'u7', displayName:'EcoHéroe23',    puntos:310,  rank:'🌿', avatar:'⭐' },
-      { uid:'u8', displayName:'Demo',          puntos:450,  rank:'🌿', avatar:'🧪', isMe:true },
-      { uid:'u9', displayName:'NaturAlma',     puntos:180,  rank:'🌱', avatar:'🦋' },
-      { uid:'u10',displayName:'BiosféraX',     puntos:90,   rank:'🌱', avatar:'🌊' },
-    ];
-
     onAuthStateChanged(auth, async (user) => {
       if (!user) {
         if (!sessionStorage.getItem('eco_demo')) { location.href='../index.html'; return; }
         currentUID='demo';
-        renderRanking(DEMO_USERS);
+        renderRanking([]);
         return;
       }
       currentUID = user.uid;
@@ -227,15 +214,47 @@
     function loadRealtime() {
       const q = query(collection(db,'users'), orderBy('puntos','desc'), limit(50));
       onSnapshot(q, snap => {
-        allUsers = snap.docs.map(d => ({ uid:d.id, ...d.data(), isMe:d.id===currentUID }));
+        allUsers = snap.docs
+          .map((d) => ({ uid:d.id, ...d.data(), isMe:d.id===currentUID }))
+          .filter((u) =>
+            u.uid !== 'demo' &&
+            !u.isBot &&
+            !u.isDemo &&
+            typeof u.displayName === 'string' &&
+            u.displayName.trim().length > 0
+          )
+          .map((u) => ({
+            ...u,
+            puntos: Number.isFinite(Number(u.puntos)) ? Number(u.puntos) : 0
+          }))
+          .sort((a, b) => b.puntos - a.puntos);
         renderRanking(allUsers);
       }, () => {
-        // Fallback to demo
-        renderRanking(DEMO_USERS);
+        renderRanking([]);
       });
     }
 
     function renderRanking(users) {
+      if (!users.length) {
+        document.getElementById('podium').innerHTML = `
+          <div style="color:var(--text-muted);font-size:0.86rem;padding:8px 0;">
+            Aún no hay jugadores registrados en el ranking global.
+          </div>`;
+        document.getElementById('my-rank-banner').innerHTML = `
+          <span style="font-size:1.5rem;">🌿</span>
+          <div>
+            <div style="font-weight:800;">Sin posición todavía</div>
+            <div style="color:var(--text-muted);font-size:0.78rem;">Solo se muestran cuentas reales registradas</div>
+          </div>
+          <div style="margin-left:auto;font-family:var(--font-mono);font-weight:700;color:var(--text-muted);">—</div>`;
+        document.getElementById('rank-list').innerHTML = `
+          <div style="text-align:center;padding:28px;color:var(--text-muted);">
+            <div style="font-size:2rem;margin-bottom:8px;">👥</div>
+            No hay jugadores reales para mostrar.
+          </div>`;
+        return;
+      }
+
       // Podium
       const top3 = users.slice(0,3);
       const podiumHTML = top3.map((u,i) => {
@@ -291,13 +310,10 @@
     window.filterRank = (filter, btn) => {
       document.querySelectorAll('.rfilt').forEach(b=>b.classList.remove('active'));
       btn.classList.add('active');
-      if (currentUID==='demo') {
-        if (filter==='semanal') {
-          const weekly = DEMO_USERS.map(u=>({...u, puntos:Math.floor(u.puntos*0.3)})).sort((a,b)=>b.puntos-a.puntos);
-          renderRanking(weekly);
-        } else { renderRanking(DEMO_USERS); }
-      }
+      renderRanking(allUsers);
     };
   </script>
 </body>
 </html>
+
+
