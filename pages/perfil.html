@@ -134,7 +134,22 @@
     .toggle.on { background:var(--green-600); border-color:var(--green-500); }
     .toggle.on::after { left:22px; background:white; }
 
-    @media(max-width:900px) { .profile-layout{grid-template-columns:1fr;} }
+    @media(max-width: 414px) {
+      .profile-layout { grid-template-columns: 1fr; gap: 16px; }
+      .profile-card { padding: 24px 16px; }
+      .avatar-main { width: 80px; height: 80px; }
+      .user-name { font-size: 1.15rem; }
+      .stats-grid { gap: 6px; margin: 12px 0; }
+      .stat-card { padding: 10px 4px; }
+      .stat-card h4 { font-size: 0.9rem; }
+      .stat-card p { font-size: 0.6rem; }
+      
+      .right-tabs { gap: 4px; }
+      .ptab { padding: 7px; font-size: 0.72rem; }
+      
+      .acc-grid { grid-template-columns: repeat(4, 1fr); }
+      .eco-avatar-preview { width: 120px; height: 120px; font-size: 4rem; }
+    }
 
     @media(max-width: 414px) {
       .profile-card { padding: 24px 16px; border-radius: var(--r-lg); }

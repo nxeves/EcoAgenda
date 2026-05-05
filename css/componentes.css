@@ -92,12 +92,32 @@
   cursor: pointer;
 }
 
-/* ── Recycle cards ── */
-.recycle-item {
-  background: var(--bg-card);
-  border: 1px solid var(--border-soft);
-  border-radius: var(--r-lg);
-  padding: 20px;
+/* ── Mobile Optimization (360px-414px) ── */
+@media (max-width: 414px) {
+  .task-card {
+    padding: 8px 12px;
+    gap: 8px;
+    border-radius: var(--r-md);
+  }
+  .task-title { font-size: 0.8rem; }
+  .task-meta { font-size: 0.65rem; }
+  .task-check { width: 16px; height: 16px; font-size: 0.55rem; }
+
+  .schedule-grid {
+    grid-template-columns: 40px repeat(5, 1fr);
+    font-size: 0.65rem;
+    gap: 1px;
+  }
+  .schedule-header, .schedule-time { padding: 4px 1px; font-size: 0.6rem; }
+  .schedule-cell { min-height: 34px; }
+
+  .recycle-item { padding: 12px; gap: 10px; }
+  .recycle-icon { font-size: 1.5rem; }
+  .recycle-name { font-size: 0.8rem; }
+  .recycle-points { font-size: 0.7rem; }
+
+  .badge { padding: 3px 8px; font-size: 0.65rem; }
+}
   display: flex; flex-direction: column; align-items: center; gap: 12px;
   text-align: center; cursor: pointer;
   transition: all var(--t-mid);

@@ -100,19 +100,21 @@
 
     @media (max-width: 414px) {
       .chat-page { padding-top: calc(var(--nav-h) + 8px); }
-      .chat-page .container { padding: 0 8px; }
-      .chat-sidebar { width: 60px; min-width: 60px; }
+      .chat-page .container { padding: 0 6px; }
+      .chat-sidebar { width: 52px; min-width: 52px; }
+      .chat-sidebar-header { padding: 12px 0; justify-content: center; }
       .chat-sidebar-header span { display: none; }
       .room-name, .room-preview { display: none; }
-      .room-item { justify-content: center; padding: 12px 4px; }
-      .chat-header { padding: 10px; gap: 8px; }
-      #header-name { font-size: 0.85rem; }
-      #header-code { font-size: 0.65rem; }
+      .room-item { justify-content: center; padding: 10px 4px; border-radius: var(--r-md); }
+      .chat-header { padding: 8px 12px; gap: 8px; }
+      #header-name { font-size: 0.8rem; }
+      #header-code { font-size: 0.6rem; }
       #btn-copy-code { display: none !important; }
-      .msg-bubble, .user-bubble { font-size: 0.85rem; padding: 8px 12px; }
-      .chat-input { font-size: 0.85rem; padding: 8px 12px; }
-      .attach-bar { padding: 4px 10px; }
-      .attach-btn { font-size: 1rem; }
+      .msg-bubble, .user-bubble { font-size: 0.8rem; padding: 8px 10px; border-radius: var(--r-md); }
+      .chat-input { font-size: 0.8rem; padding: 8px 10px; border-radius: var(--r-md); }
+      .attach-bar { padding: 4px 8px; }
+      .attach-btn { font-size: 0.95rem; }
+      .send-btn-chat { width: 36px; height: 36px; font-size: 0.9rem; }
     }
   </style>
 </head>

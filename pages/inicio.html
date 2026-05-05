@@ -100,22 +100,34 @@
     }
 
     @media(max-width: 414px) {
-      .hero-greeting { font-size: 1.5rem; }
-      .hero-section { padding: 32px 0 20px; }
-      .stats-row { gap: 8px; margin-bottom: 24px; }
-      .stat-card { padding: 10px 4px; }
-      .stat-icon { font-size: 1.3rem; margin-bottom: 4px; }
-      .stat-val { font-size: 1.2rem; }
+      .hero-greeting { font-size: 1.4rem; margin-bottom: 2px; }
+      .hero-section { padding: 24px 0 16px; }
+      .hero-sub { font-size: 0.8rem; margin-bottom: 16px; }
+      
+      .stats-row { 
+        grid-template-columns: repeat(2, 1fr);
+        gap: 8px; 
+        margin-bottom: 20px; 
+      }
+      .stat-card { padding: 12px 6px; }
+      .stat-icon { font-size: 1.2rem; margin-bottom: 4px; }
+      .stat-val { font-size: 1.1rem; }
       .stat-lbl { font-size: 0.6rem; }
       
-      .modules-grid { gap: 8px; }
+      .modules-grid { 
+        grid-template-columns: repeat(2, 1fr);
+        grid-template-rows: repeat(4, auto);
+        gap: 8px; 
+        margin-bottom: 24px;
+      }
       .module-card { padding: 12px 4px; gap: 4px; }
-      .module-icon { font-size: 2.2rem; }
-      .module-name { font-size: 0.65rem; }
+      .module-icon { font-size: 1.8rem; }
+      .module-name { font-size: 0.75rem; }
+      .module-desc { display: none; }
       
       .dashboard-bottom { gap: 12px; }
-      .card { padding: 14px; }
-      .section-hd h2 { font-size: 1rem; }
+      .card { padding: 12px; }
+      .section-hd h2 { font-size: 0.95rem; }
     }
   </style>
 </head>

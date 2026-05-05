@@ -22,7 +22,10 @@ exports.handler = async function(event) {
     const body = JSON.parse(event.body || '{}');
     const messages = body.messages || [];
     
-    // Convertir el historial de mensajes al formato de Groq (OpenAI-like)
+    // Detectar si hay alguna imagen en los mensajes
+    let hasImage = false;
+    
+    // Convertir el historial de mensajes al formato de Groq (OpenAI-compatible)
     let chatMessages = [];
     
     // Agregar instrucción del sistema si existe
@@ -30,15 +33,28 @@ exports.handler = async function(event) {
       chatMessages.push({ role: "system", content: body.system });
     }
 
-    // Mapear mensajes previos
+    // Mapear mensajes previos y detectar imágenes
     messages.forEach(m => {
-      let content = "";
+      let content;
+      
       if (typeof m.content === 'string') {
         content = m.content;
       } else if (Array.isArray(m.content)) {
-        // Groq llama-3.1-8b-instant es principalmente texto, extraemos el texto
-        const textPart = m.content.find(p => p.type === 'text');
-        content = textPart ? textPart.text : "Analiza esto";
+        content = m.content.map(part => {
+          if (part.type === 'text') {
+            return { type: 'text', text: part.text };
+          } else if (part.type === 'image' || part.type === 'image_url') {
+            hasImage = true;
+            const base64Data = part.source?.data || part.image_url?.url?.split(',')[1] || part.data;
+            return {
+              type: "image_url",
+              image_url: {
+                url: `data:image/jpeg;base64,${base64Data}`
+              }
+            };
+          }
+          return part;
+        });
       }
       
       chatMessages.push({
@@ -47,9 +63,14 @@ exports.handler = async function(event) {
       });
     });
 
+    // Seleccionar modelo según si hay imagen
+    const model = hasImage 
+      ? 'meta-llama/llama-4-scout-17b-16e-instruct' 
+      : 'llama-3.3-70b-versatile';
+
     const apiUrl = 'https://api.groq.com/openai/v1/chat/completions';
     
-    console.log("Llamando a Groq con modelo: llama-3.1-8b-instant");
+    console.log(`Llamando a Groq con modelo: ${model} (hasImage: ${hasImage})`);
 
     const response = await fetch(apiUrl, {
       method: 'POST',
@@ -58,7 +79,7 @@ exports.handler = async function(event) {
         'Authorization': `Bearer ${API_KEY}`
       },
       body: JSON.stringify({ 
-        model: 'llama-3.1-8b-instant',
+        model: model,
         messages: chatMessages,
         max_tokens: body.max_tokens || 1000,
         temperature: 0.7

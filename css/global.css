@@ -475,8 +475,116 @@ body {
 .stagger > *:nth-child(7) { animation-delay: 0.35s; }
 .stagger > *:nth-child(8) { animation-delay: 0.4s; }
 
-/* ── Grids ── */
-.grid-2 { display: grid; grid-template-columns: repeat(2, 1fr); gap: 20px; }
+/* ── Mobile Optimization (360px-414px) ── */
+@media (max-width: 414px) {
+  :root {
+    --nav-h: 52px;
+    --mobile-nav-h: 56px;
+    font-size: 13px; /* Reduced base font size */
+  }
+
+  .container {
+    padding: 0 12px;
+  }
+
+  /* Compact Navigation */
+  .eco-nav {
+    height: var(--nav-h);
+  }
+
+  .nav-logo {
+    font-size: 1rem;
+    gap: 3px;
+  }
+
+  .nav-links {
+    gap: 0;
+    width: auto;
+    flex: 1;
+    justify-content: center;
+  }
+
+  .nav-links a {
+    padding: 4px 5px;
+    font-size: 0 !important; /* Hide text */
+    gap: 0;
+  }
+
+  .nav-links a .nav-icon {
+    font-size: 1.25rem;
+  }
+
+  .nav-links a.active::after {
+    bottom: 1px;
+    width: 3px;
+    height: 3px;
+  }
+
+  .nav-user {
+    gap: 6px;
+  }
+
+  .nav-avatar {
+    width: 28px;
+    height: 28px;
+  }
+
+  .theme-toggle-btn {
+    width: 28px;
+    height: 28px;
+    font-size: 0.8rem;
+  }
+
+  /* Global Scaling (Reduced by ~20%) */
+  .section-title {
+    font-size: 1.2rem;
+    margin-bottom: 2px;
+  }
+
+  .section-subtitle {
+    font-size: 0.75rem;
+    margin-bottom: 12px;
+  }
+
+  .main-content {
+    padding-top: calc(var(--nav-h) + 12px);
+  }
+
+  .btn {
+    padding: 8px 16px;
+    font-size: 0.75rem;
+    gap: 4px;
+  }
+
+  .btn-sm { padding: 5px 10px; font-size: 0.65rem; }
+  .btn-lg { padding: 10px 22px; font-size: 0.85rem; }
+  .btn-xl { padding: 12px 28px; font-size: 0.95rem; }
+  .btn-icon { width: 30px; height: 30px; padding: 6px; }
+
+  .input-field {
+    padding: 8px 12px;
+    font-size: 0.8rem;
+  }
+  .input-group { margin-bottom: 12px; }
+  .input-label { font-size: 0.65rem; }
+
+  .card {
+    padding: 12px;
+    border-radius: var(--r-md);
+  }
+
+  .divider { margin: 16px 0; }
+
+  .toast {
+    min-width: auto;
+    width: calc(100% - 24px);
+    left: 12px;
+    right: 12px;
+    top: 60px;
+    padding: 8px 12px;
+    font-size: 0.75rem;
+  }
+}
 .grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; }
 .grid-4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; }
 
