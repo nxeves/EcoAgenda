@@ -98,6 +98,82 @@
       box-shadow: 0 0 0 1px rgba(34, 197, 94, 0.3) inset;
     }
 
+    /* WhatsApp Style Audio Player */
+    .audio-player-container {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 8px 12px;
+      background: var(--bg-card);
+      border-radius: 20px;
+      min-width: 220px;
+      max-width: 280px;
+      border: 1px solid var(--border-soft);
+    }
+    .ap-play-btn {
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      background: var(--green-500);
+      color: white;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      font-size: 1rem;
+      flex-shrink: 0;
+      transition: transform 0.2s;
+    }
+    .ap-play-btn:active { transform: scale(0.9); }
+    
+    .ap-waveform {
+      flex: 1;
+      height: 24px;
+      display: flex;
+      align-items: center;
+      gap: 2px;
+      position: relative;
+    }
+    .ap-bar {
+      flex: 1;
+      height: 40%;
+      background: var(--border-mid);
+      border-radius: 1px;
+      transition: height 0.2s, background 0.2s;
+    }
+    .audio-player-container.playing .ap-bar {
+      background: var(--green-400);
+      animation: audio-wave 1s ease-in-out infinite;
+    }
+    .ap-bar:nth-child(2n) { animation-delay: 0.1s; }
+    .ap-bar:nth-child(3n) { animation-delay: 0.2s; }
+    
+    @keyframes audio-wave {
+      0%, 100% { height: 40%; }
+      50% { height: 90%; }
+    }
+    
+    .ap-time-info {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-end;
+      min-width: 40px;
+    }
+    .ap-current-time { font-size: 0.7rem; font-weight: 700; color: var(--green-400); }
+    .ap-total-duration { font-size: 0.65rem; color: var(--text-muted); }
+
+    .audio-player-container .ap-progress-overlay {
+      position: absolute;
+      left: 0;
+      top: 0;
+      height: 100%;
+      background: var(--green-500);
+      opacity: 0.3;
+      width: 0%;
+      pointer-events: none;
+      border-radius: 1px;
+    }
+
     /* ── Mobile Optimization & WhatsApp Style ── */
     @media (max-width: 767px) {
       .chat-page .container { padding: 0; }
@@ -571,7 +647,19 @@
           content = `<img class="msg-img" src="${src}" onclick="window.open('${src}')" />`;
         } else if (m.type === 'audio' || m.audioData) {
           const src = m.audioData || m.url;
-          content = `<div class="msg-audio"><span class="audio-play-btn" onclick="this.nextElementSibling.play()">▶️</span><audio src="${src}" preload="none"></audio><span style="font-size:0.75rem">Audio</span></div>`;
+          content = `
+            <div class="audio-player-container" id="ap-${m.id}">
+              <div class="ap-play-btn" onclick="toggleAudioPlayer('${m.id}')">▶</div>
+              <div class="ap-waveform">
+                <div class="ap-progress-overlay"></div>
+                ${Array(15).fill('<div class="ap-bar"></div>').join('')}
+              </div>
+              <div class="ap-time-info">
+                <span class="ap-current-time">0:00</span>
+                <span class="ap-total-duration">--:--</span>
+              </div>
+              <audio src="${src}" preload="metadata" ontimeupdate="updateAudioProgress('${m.id}', this)" onloadedmetadata="setAudioDuration('${m.id}', this)" onended="resetAudioPlayer('${m.id}')"></audio>
+            </div>`;
         } else {
           content = highlightMentions(m.text || '');
         }
@@ -725,6 +813,69 @@
         return `${prefix}<span class="mention-token">@${alias}</span>`;
       });
     }
+
+    // ── WhatsApp Audio Player Logic ──────────────────
+    window.setAudioDuration = (id, audio) => {
+      const container = document.getElementById(`ap-${id}`);
+      if (!container) return;
+      const totalEl = container.querySelector('.ap-total-duration');
+      if (audio.duration && isFinite(audio.duration)) {
+        totalEl.textContent = fmtSecs(Math.floor(audio.duration));
+      }
+    };
+
+    window.updateAudioProgress = (id, audio) => {
+      const container = document.getElementById(`ap-${id}`);
+      if (!container) return;
+      const currentEl = container.querySelector('.ap-current-time');
+      const progressOverlay = container.querySelector('.ap-progress-overlay');
+      
+      const current = Math.floor(audio.currentTime);
+      currentEl.textContent = fmtSecs(current);
+      
+      const pct = (audio.currentTime / audio.duration) * 100;
+      progressOverlay.style.width = `${pct}%`;
+    };
+
+    window.toggleAudioPlayer = (id) => {
+      const container = document.getElementById(`ap-${id}`);
+      const audio = container.querySelector('audio');
+      const btn = container.querySelector('.ap-play-btn');
+      
+      if (audio.paused) {
+        // Pausar otros audios que puedan estar sonando
+        document.querySelectorAll('audio').forEach(a => {
+          if (a !== audio) {
+            a.pause();
+            const otherContainer = a.closest('.audio-player-container');
+            if (otherContainer) {
+              otherContainer.classList.remove('playing');
+              otherContainer.querySelector('.ap-play-btn').textContent = '▶';
+            }
+          }
+        });
+        
+        audio.play();
+        container.classList.add('playing');
+        btn.textContent = '⏸';
+      } else {
+        audio.pause();
+        container.classList.remove('playing');
+        btn.textContent = '▶';
+      }
+    };
+
+    window.resetAudioPlayer = (id) => {
+      const container = document.getElementById(`ap-${id}`);
+      const btn = container.querySelector('.ap-play-btn');
+      const progressOverlay = container.querySelector('.ap-progress-overlay');
+      const currentEl = container.querySelector('.ap-current-time');
+      
+      container.classList.remove('playing');
+      btn.textContent = '▶';
+      progressOverlay.style.width = '0%';
+      currentEl.textContent = '0:00';
+    };
 
     // ── Create / Join room ────────────────────────────
     window.openCreateRoom = () => document.getElementById('create-modal').style.display='flex';
