@@ -565,13 +565,17 @@
         const time  = m.timestamp ? new Date(m.timestamp).toLocaleTimeString('es-MX',{hour:'2-digit',minute:'2-digit'}) : '';
         const isMentioned = Array.isArray(m.mentions?.uids) && m.mentions.uids.includes(currentUser.uid);
         let content = '';
-        if (m.type==='image') {
-          content = `<img class="msg-img" src="${m.url}" onclick="window.open('${m.url}')" />`;
-        } else if (m.type==='audio') {
-          content = `<div class="msg-audio"><span class="audio-play-btn" onclick="playAudio('${m.url}')">▶️</span><audio src="${m.url}" preload="none"></audio><span style="font-size:0.75rem">Audio ${fmtSecs(m.duration||0)}</span></div>`;
+        
+        if (m.type === 'image' || m.imageData) {
+          const src = m.imageData || m.url;
+          content = `<img class="msg-img" src="${src}" onclick="window.open('${src}')" />`;
+        } else if (m.type === 'audio' || m.audioData) {
+          const src = m.audioData || m.url;
+          content = `<div class="msg-audio"><span class="audio-play-btn" onclick="this.nextElementSibling.play()">▶️</span><audio src="${src}" preload="none"></audio><span style="font-size:0.75rem">Audio</span></div>`;
         } else {
           content = highlightMentions(m.text || '');
         }
+        
         const bubbleClass = `${isOwn?'user-bubble':'msg-bubble'}${isMentioned?' msg-mentioned':''}`;
         const senderState = memberStatusByUid.get(m.uid) || 'offline';
         const reacts = m.reactions ? Object.entries(m.reactions).map(([e,c])=>`<span class="reaction-btn" onclick="reactMsg('${m.id}','${e}')">${e} ${c}</span>`).join('') : '';
@@ -818,8 +822,24 @@
         mediaRecorder.ondataavailable = e => audioChunks.push(e.data);
         mediaRecorder.onstop = () => {
           const blob = new Blob(audioChunks,{type:'audio/webm'});
-          const url  = URL.createObjectURL(blob);
-          appendAudioMsg(url);
+          const reader = new FileReader();
+          reader.onload = async (e) => {
+            const base64 = e.target.result;
+            if (currentUser.uid === 'demo') {
+              appendAudioMsg(base64);
+            } else {
+              const msgRef = ref(rtdb, `messages/${currentRoomId}`);
+              await push(msgRef, {
+                uid: currentUser.uid,
+                displayName: currentUser.displayName,
+                avatar: '🌿',
+                audioData: base64,
+                type: 'audio',
+                timestamp: Date.now()
+              });
+            }
+          };
+          reader.readAsDataURL(blob);
           stream.getTracks().forEach(t=>t.stop());
         };
         mediaRecorder.start();
@@ -838,8 +858,9 @@
           <div>
             <div class="user-bubble">
               <div class="msg-audio">
-                <span class="audio-play-btn">▶️</span>
-                <audio src="${url}" controls style="height:24px;max-width:160px;"></audio>
+                <span class="audio-play-btn" onclick="this.nextElementSibling.play()">▶️</span>
+                <audio src="${url}" preload="none"></audio>
+                <span style="font-size:0.75rem">Audio</span>
               </div>
             </div>
             <div class="msg-time">${time}</div>
@@ -850,25 +871,42 @@
 
     // ── Image sending ─────────────────────────────────
     window.sendImage = (input) => {
-      if (!input.files[0]) return;
+      if (!input.files[0] || !currentRoomId) return;
       const reader = new FileReader();
-      reader.onload = e => {
-        const msgs = document.getElementById('chat-messages');
-        const time = new Date().toLocaleTimeString('es-MX',{hour:'2-digit',minute:'2-digit'});
-        msgs.innerHTML += `
-          <div class="msg own">
-            <div class="msg-avatar">🌿</div>
-            <div>
-              <div class="user-bubble">
-                <img class="msg-img" src="${e.target.result}" onclick="window.open('${e.target.result}')" />
-              </div>
-              <div class="msg-time">${time}</div>
-            </div>
-          </div>`;
-        msgs.scrollTop = msgs.scrollHeight;
+      reader.onload = async (e) => {
+        const base64 = e.target.result;
+        if (currentUser.uid === 'demo') {
+          appendImageMsg(base64);
+        } else {
+          const msgRef = ref(rtdb, `messages/${currentRoomId}`);
+          await push(msgRef, {
+            uid: currentUser.uid,
+            displayName: currentUser.displayName,
+            avatar: '🌿',
+            imageData: base64,
+            type: 'image',
+            timestamp: Date.now()
+          });
+        }
       };
       reader.readAsDataURL(input.files[0]);
     };
+
+    function appendImageMsg(url) {
+      const msgs = document.getElementById('chat-messages');
+      const time = new Date().toLocaleTimeString('es-MX',{hour:'2-digit',minute:'2-digit'});
+      msgs.innerHTML += `
+        <div class="msg own">
+          <div class="msg-avatar">🌿</div>
+          <div>
+            <div class="user-bubble">
+              <img class="msg-img" src="${url}" onclick="window.open('${url}')" />
+            </div>
+            <div class="msg-time">${time}</div>
+          </div>
+        </div>`;
+      msgs.scrollTop = msgs.scrollHeight;
+    }
 
     // ── Emoji picker (simple) ─────────────────────────
     window.showEmojiPicker = () => {
