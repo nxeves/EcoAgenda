@@ -365,13 +365,19 @@
     let cameraStream = null;
     let remindersTimer = null;
 
+    function esc(text = '') {
+      return String(text).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    }
+
     onAuthStateChanged(auth, async (user) => {
-      if (!user) { const d=sessionStorage.getItem('eco_demo'); if(!d) location.href='../index.html'; else { currentUID='demo'; loadDemoTasks(); renderCalendar(); } return; }
+      if (!user) { const d=sessionStorage.getItem('eco_demo'); if(!d) location.href='../index.html'; else { currentUID='demo'; loadDemoTasks(); renderCalendar(); renderScheduleGrid(); } return; }
       currentUID = user.uid;
+      if (user.photoURL) document.getElementById('nav-avatar').src = user.photoURL;
       await loadTasks();
       renderCalendar();
       loadReminders();
       await bootAgendaNotifications();
+      renderScheduleGrid();
     });
 
     async function bootAgendaNotifications() {
@@ -606,6 +612,8 @@
       input.value = '';
     };
 
+    let scheduleData = [];
+
     async function analyzeScheduleImage(imageData) {
       toast('🤖 EcoBot analizando el horario...','info');
       document.getElementById('scan-result').style.display='block';
@@ -614,40 +622,106 @@
           method:'POST',
           headers:{'Content-Type':'application/json'},
           body:JSON.stringify({
-            model:'gemini-1.5-flash',
+            model:'meta-llama/llama-4-scout-17b-16e-instruct',
             max_tokens:1000,
-            system: 'Eres un experto analizando horarios escolares. Extrae la información en una tabla clara.',
+            system: 'Eres un experto analizando horarios escolares. Extrae la información en un formato JSON estructurado que contenga un arreglo de clases, cada una con: day (Lunes, Martes, Miercoles, Jueves, Viernes), time (formato HH:00 de 7:00 a 14:00) y subject. Si no puedes generar JSON, devuelve una tabla clara.',
             messages:[{
               role:'user',
               content:[
-                { type:'image', source:{ type:'base64', media_type:'image/jpeg', data:imageData } },
-                { type:'text', text:'Analiza este horario escolar y extrae: días de la semana, horas y materias en formato de tabla legible. Si no es un horario, dilo. Responde en español.' }
+                { type:'image_url', image_url: { url: `data:image/jpeg;base64,${imageData}` } },
+                { type:'text', text:'Analiza este horario escolar y extrae las materias. Devuelve los datos en un bloque de código JSON con este formato: [{"day": "Lunes", "time": "8:00", "subject": "Matemáticas"}, ...]. Asegúrate de usar solo las horas: 7:00, 8:00, 9:00, 10:00, 11:00, 12:00, 13:00, 14:00. Responde solo el JSON.' }
               ]
             }]
           })
         });
         const data = await resp.json();
-        document.getElementById('scan-result-text').textContent = data.content?.[0]?.text || 'No se pudo analizar la imagen';
+        const rawText = data.content?.[0]?.text || '';
+        document.getElementById('scan-result-text').textContent = rawText;
+        
+        // Intentar extraer JSON del texto
+        try {
+          const jsonMatch = rawText.match(/\[[\s\S]*\]/);
+          if (jsonMatch) {
+            scheduleData = JSON.parse(jsonMatch[0]);
+            console.log("Horario parseado:", scheduleData);
+          }
+        } catch(e) { console.error("Error al parsear JSON del horario", e); }
+        
       } catch(e) {
         document.getElementById('scan-result-text').textContent = 'Error al conectar con EcoBot. Verifica tu conexión.';
       }
     }
 
-    window.importSchedule = () => {
+    window.importSchedule = async () => {
+      if (!scheduleData || scheduleData.length === 0) {
+        toast('No hay datos de horario para importar','warning');
+        return;
+      }
+
+      if (currentUID !== 'demo') {
+        try {
+          // Guardar cada clase en Firestore (colección "horario")
+          for (const item of scheduleData) {
+            await addDoc(collection(db, 'horario'), {
+              ...item,
+              uid: currentUID,
+              createdAt: serverTimestamp()
+            });
+          }
+        } catch(e) { console.error("Error al guardar horario:", e); }
+      } else {
+        // En demo guardar en localStorage
+        const localSched = JSON.parse(localStorage.getItem('eco_schedule_demo') || '[]');
+        localStorage.setItem('eco_schedule_demo', JSON.stringify([...localSched, ...scheduleData]));
+      }
+
       toast('📅 Horario importado a tu agenda','success');
       renderScheduleGrid();
       switchAgendaTab('horario', document.querySelectorAll('.atab')[1]);
     };
 
     // ── Schedule grid ────────────────────────────────
-    function renderScheduleGrid() {
+    async function fetchSchedule() {
+      if (currentUID === 'demo') {
+        return JSON.parse(localStorage.getItem('eco_schedule_demo') || '[]');
+      }
+      try {
+        const q = query(collection(db, 'horario'), where('uid', '==', currentUID));
+        const snap = await getDocs(q);
+        return snap.docs.map(doc => doc.data());
+      } catch(e) {
+        console.error("Error fetching schedule:", e);
+        return [];
+      }
+    }
+
+    async function renderScheduleGrid() {
       const grid = document.getElementById('schedule-grid');
       const hours = ['7:00','8:00','9:00','10:00','11:00','12:00','13:00','14:00'];
+      const days = ['Lunes','Martes','Miercoles','Jueves','Viernes'];
+      const dayShort = ['Lun','Mar','Mié','Jue','Vie'];
+      
+      const savedClasses = await fetchSchedule();
+      
       let html = '<div class="schedule-header"></div>';
-      ['Lun','Mar','Mié','Jue','Vie'].forEach(d=>{ html+=`<div class="schedule-header">${d}</div>`; });
+      dayShort.forEach(d=>{ html+=`<div class="schedule-header">${d}</div>`; });
+      
       hours.forEach(h => {
         html += `<div class="schedule-time">${h}</div>`;
-        for(let i=0;i<5;i++) html+='<div class="schedule-cell"></div>';
+        days.forEach(d => {
+          // Buscar si hay una clase para este día y hora
+          const classAt = savedClasses.find(c => {
+            const cDay = c.day.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+            const sDay = d.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+            return cDay === sDay && c.time === h;
+          });
+          
+          if (classAt) {
+            html += `<div class="schedule-cell"><div class="schedule-event">${esc(classAt.subject)}</div></div>`;
+          } else {
+            html += '<div class="schedule-cell"></div>';
+          }
+        });
       });
       grid.innerHTML = html;
     }
