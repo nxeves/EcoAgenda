@@ -37,6 +37,7 @@ export function toast(msg, type = 'success', duration = 3500) {
 
 // ── Theme system (dark / light) ─────────
 const THEME_KEY = 'eco_theme';
+const FONT_SIZE_KEY = 'eco_font_size';
 
 export function applyTheme(theme = 'dark') {
   const safeTheme = theme === 'light' ? 'light' : 'dark';
@@ -45,14 +46,25 @@ export function applyTheme(theme = 'dark') {
   return safeTheme;
 }
 
+export function applyFontSize(size = 17) {
+  // Default is 17px (slightly larger as requested)
+  document.documentElement.style.fontSize = `${size}px`;
+  localStorage.setItem(FONT_SIZE_KEY, size);
+}
+
 export function toggleTheme() {
   const current = document.documentElement.getAttribute('data-theme') || 'dark';
   return applyTheme(current === 'dark' ? 'light' : 'dark');
 }
 
 export function initThemeToggle() {
-  const stored = localStorage.getItem(THEME_KEY) || 'dark';
-  applyTheme(stored);
+  const storedTheme = localStorage.getItem(THEME_KEY) || 'dark';
+  applyTheme(storedTheme);
+  
+  const storedFontSize = localStorage.getItem(FONT_SIZE_KEY);
+  if (storedFontSize) {
+    applyFontSize(storedFontSize);
+  }
 
   // Inject a shared toggle so we do not duplicate markup in every HTML file.
   if (document.getElementById('theme-toggle-btn')) return;

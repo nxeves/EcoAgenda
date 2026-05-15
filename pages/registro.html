@@ -1,4 +1,4 @@
-﻿﻿<!DOCTYPE html>
+﻿﻿﻿﻿﻿﻿﻿﻿<!DOCTYPE html>
 <html lang="es">
 <head>
   <meta charset="UTF-8" />
@@ -119,13 +119,38 @@
       <!-- Name row -->
       <div class="grid-2">
         <div class="input-group">
-          <label class="input-label">Nombre</label>
-          <input class="input-field" type="text" id="reg-nombre" placeholder="Tu nombre" />
+          <label class="input-label">Nombre(s)</label>
+          <input class="input-field" type="text" id="reg-nombre" placeholder="Tu nombre" required />
         </div>
         <div class="input-group">
-          <label class="input-label">Apellido</label>
-          <input class="input-field" type="text" id="reg-apellido" placeholder="Tu apellido" />
+          <label class="input-label">Apellidos</label>
+          <input class="input-field" type="text" id="reg-apellido" placeholder="Tus apellidos" required />
         </div>
+      </div>
+
+      <!-- Academic Info -->
+      <div class="grid-2">
+        <div class="input-group">
+          <label class="input-label">Grado</label>
+          <select class="input-field" id="reg-grado" required>
+            <option value="" disabled selected>Elegir...</option>
+            <option value="1">1° Semestre</option>
+            <option value="2">2° Semestre</option>
+            <option value="3">3° Semestre</option>
+            <option value="4">4° Semestre</option>
+            <option value="5">5° Semestre</option>
+            <option value="6">6° Semestre</option>
+          </select>
+        </div>
+        <div class="input-group">
+          <label class="input-label">Grupo</label>
+          <input class="input-field" type="text" id="reg-grupo" placeholder="Ej: A, B, 301..." required />
+        </div>
+      </div>
+
+      <div class="input-group">
+        <label class="input-label">Número de Lista</label>
+        <input class="input-field" type="number" id="reg-lista" placeholder="Ej: 15" min="1" max="60" required />
       </div>
 
       <div class="input-group">
@@ -168,10 +193,11 @@
       </div>
 
       <div class="input-group">
-        <label class="input-label">Escuela (opcional)</label>
+        <label class="input-label">Escuela DGETI</label>
         <div class="input-with-icon">
           <span class="input-icon">🏫</span>
-          <input class="input-field" type="text" id="reg-escuela" placeholder="Nombre de tu escuela" />
+          <input class="input-field" type="text" id="reg-escuela" placeholder="Busca tu CBTIS o CETIS..." list="dgeti-list" required />
+          <datalist id="dgeti-list"></datalist>
         </div>
       </div>
 
@@ -192,9 +218,16 @@
     import { auth, db } from '../js/firebase.js';
     import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
     import { doc, setDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+    import { DGETI_SCHOOLS } from '../js/dgeti-db.js';
 
     initParticles();
     onAuthStateChanged(auth, u => { if(u) location.href = 'inicio.html'; });
+
+    // Populate DGETI datalist
+    const dlist = document.getElementById('dgeti-list');
+    if (dlist) {
+      dlist.innerHTML = DGETI_SCHOOLS.map(s => `<option value="${s}">`).join('');
+    }
 
     let photoFile = null;
 
@@ -225,7 +258,6 @@
     };
 
     window.register = async () => {
-      const control   = document.getElementById('reg-control').value.trim();
       const nombre    = document.getElementById('reg-nombre').value.trim();
       const apellido  = document.getElementById('reg-apellido').value.trim();
       const username  = document.getElementById('reg-username').value.trim();
@@ -233,8 +265,14 @@
       const pass      = document.getElementById('reg-pass').value;
       const pass2     = document.getElementById('reg-pass2').value;
       const escuela   = document.getElementById('reg-escuela').value.trim();
+      const grado     = document.getElementById('reg-grado').value;
+      const grupo     = document.getElementById('reg-grupo').value.trim();
+      const lista     = document.getElementById('reg-lista').value.trim();
 
-      if (!control || !nombre || !email || !pass || !username) { toast('Completa los campos obligatorios', 'warning'); return; }
+      if (!nombre || !apellido || !email || !pass || !username || !escuela || !grado || !grupo || !lista) { 
+        toast('Por favor, completa todos los campos obligatorios', 'warning'); 
+        return; 
+      }
       if (pass !== pass2) { toast('Las contraseñas no coinciden', 'error'); return; }
       if (pass.length < 6) { toast('Contraseña muy corta (mínimo 6 caracteres)', 'warning'); return; }
 
@@ -245,7 +283,6 @@
         const displayName = `${nombre} ${apellido}`.trim();
         let photoURL = '';
 
-        // Si hay foto, la convertimos a base64 para guardarla directamente en Firestore
         if (photoFile) {
           photoURL = await new Promise((resolve) => {
             const reader = new FileReader();
@@ -259,8 +296,17 @@
 
         // Save extra profile data
         await setDoc(doc(db, 'users', user.uid), {
-          username, escuela, photoURL, numControl: control,
-          puntos: 0, nivel: 'semilla', accesorios: [],
+          firstName: nombre,
+          lastName: apellido,
+          username, 
+          escuela, 
+          grado,
+          grupo,
+          numLista: lista,
+          photoURL, 
+          puntos: 0, 
+          nivel: 'semilla', 
+          accesorios: [],
           updatedAt: serverTimestamp()
         }, { merge: true });
 

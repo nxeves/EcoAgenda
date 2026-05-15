@@ -9,11 +9,11 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
   <style>
     :root {
-      --ig-bg: #050a06;
-      --ig-card: #0d150e;
-      --ig-border: #1e2e22;
-      --ig-accent: #22c55e;
-      --ig-text-muted: #86efac88;
+      --ig-bg: var(--green-900);
+      --ig-card: var(--green-800);
+      --ig-border: var(--green-700);
+      --ig-accent: var(--green-500);
+      --ig-text-muted: var(--text-muted);
     }
 
     body { background-color: var(--ig-bg); }
@@ -160,6 +160,31 @@
       border: 1px solid var(--ig-border);
       border-radius: 16px;
       padding: 20px;
+    }
+
+    /* Font Slider */
+    .font-slider-wrap {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex: 1;
+      justify-content: flex-end;
+    }
+    .font-slider {
+      -webkit-appearance: none;
+      width: 100px;
+      height: 4px;
+      background: var(--ig-border);
+      border-radius: 2px;
+      outline: none;
+    }
+    .font-slider::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      width: 16px;
+      height: 16px;
+      background: var(--ig-accent);
+      border-radius: 50%;
+      cursor: pointer;
     }
 
     /* QR Specific */
@@ -372,6 +397,17 @@
           <div class="content-card">
             <div class="setting-row">
               <div class="setting-info">
+                <div class="setting-label">Tamaño de letra</div>
+                <div class="setting-sub">Ajusta el texto de la app</div>
+              </div>
+              <div class="font-slider-wrap">
+                <span style="font-size: 0.8rem;">a</span>
+                <input type="range" min="14" max="24" value="17" class="font-slider" id="font-range" oninput="changeFontSize(this.value)">
+                <span style="font-size: 1.4rem;">A</span>
+              </div>
+            </div>
+            <div class="setting-row">
+              <div class="setting-info">
                 <div class="setting-label">Notificaciones</div>
                 <div class="setting-sub">Alertas de tareas</div>
               </div>
@@ -415,12 +451,30 @@
         <input class="input-field" type="text" id="edit-username" style="background:var(--ig-card);border-color:var(--ig-border);color:white;" />
       </div>
       <div class="input-group">
-        <label class="input-label" style="color:var(--ig-text-muted);font-size:0.65rem;">ESCUELA</label>
-        <input class="input-field" type="text" id="edit-school" style="background:var(--ig-card);border-color:var(--ig-border);color:white;" />
+        <label class="input-label" style="color:var(--ig-text-muted);font-size:0.65rem;">ESCUELA DGETI</label>
+        <input class="input-field" type="text" id="edit-school" list="edit-dgeti-list" style="background:var(--ig-card);border-color:var(--ig-border);color:white;" />
+        <datalist id="edit-dgeti-list"></datalist>
+      </div>
+      <div class="grid-2" style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+        <div class="input-group">
+          <label class="input-label" style="color:var(--ig-text-muted);font-size:0.65rem;">GRADO</label>
+          <select class="input-field" id="edit-grado" style="background:var(--ig-card);border-color:var(--ig-border);color:white;">
+            <option value="1">1°</option>
+            <option value="2">2°</option>
+            <option value="3">3°</option>
+            <option value="4">4°</option>
+            <option value="5">5°</option>
+            <option value="6">6°</option>
+          </select>
+        </div>
+        <div class="input-group">
+          <label class="input-label" style="color:var(--ig-text-muted);font-size:0.65rem;">GRUPO</label>
+          <input class="input-field" type="text" id="edit-grupo" style="background:var(--ig-card);border-color:var(--ig-border);color:white;" />
+        </div>
       </div>
       <div class="input-group">
-        <label class="input-label" style="color:var(--ig-text-muted);font-size:0.65rem;">NÚMERO DE CONTROL</label>
-        <input class="input-field" type="text" id="edit-control" style="background:var(--ig-card);border-color:var(--ig-border);color:white;" />
+        <label class="input-label" style="color:var(--ig-text-muted);font-size:0.65rem;">NÚMERO DE LISTA</label>
+        <input class="input-field" type="number" id="edit-lista" style="background:var(--ig-card);border-color:var(--ig-border);color:white;" />
       </div>
       
       <button class="btn btn-primary" style="width:100%;margin-top:10px;background:var(--ig-accent);color:black;border-radius:10px;" onclick="saveProfile()">Guardar</button>
@@ -428,12 +482,19 @@
   </div>
 
   <script type="module">
-    import { initParticles, toast, getRank, getRankProgress } from '../js/utils.js';
+    import { initParticles, toast, getRank, getRankProgress, applyFontSize } from '../js/utils.js';
     import { auth, db } from '../js/firebase.js';
     import { onAuthStateChanged, signOut, updateProfile } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
     import { doc, getDoc, setDoc } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+    import { DGETI_SCHOOLS } from '../js/dgeti-db.js';
 
     initParticles();
+
+    // Populate DGETI datalist
+    const dlist = document.getElementById('edit-dgeti-list');
+    if (dlist) {
+      dlist.innerHTML = DGETI_SCHOOLS.map(s => `<option value="${s}">`).join('');
+    }
 
     let userData = null; let currentUser = null;
     let selectedBase='🌱', selectedAcc='⭐', selectedBg='#0b5022';
@@ -472,7 +533,7 @@
     });
 
     function renderProfile() {
-      const { displayName, puntos=0, username, escuela, photoURL, numControl } = userData;
+      const { displayName, puntos=0, username, escuela, photoURL, numLista, grado, grupo } = userData;
       document.getElementById('profile-name').textContent   = displayName;
       document.getElementById('profile-handle').textContent = '@' + (username||'ecousuario');
       document.getElementById('profile-school').textContent = escuela ? '🏫 '+escuela : '🏫 Escuela no definida';
@@ -483,9 +544,9 @@
         document.getElementById('nav-avatar').src = photoURL;
       }
 
-      // Update QR data
+      // Update QR data display
       document.getElementById('qr-name-display').textContent = displayName;
-      document.getElementById('qr-control-display').textContent = numControl || '00000000';
+      document.getElementById('qr-control-display').textContent = `${grado || '-'}° ${grupo || '-'} | Lista: ${numLista || '-'}`;
       
       const rank = getRank(puntos); const pct = getRankProgress(puntos);
       document.getElementById('profile-rank').textContent = rank.icon + ' ' + rank.name;
@@ -507,7 +568,14 @@
       const s = JSON.parse(localStorage.getItem('eco_settings')||'{}');
       if (s.sound===false) document.getElementById('tog-sound').classList.remove('on');
       if (s.notif===false) document.getElementById('tog-notif').classList.remove('on');
+      
+      const storedFontSize = localStorage.getItem('eco_font_size') || 17;
+      document.getElementById('font-range').value = storedFontSize;
     }
+
+    window.changeFontSize = (size) => {
+      applyFontSize(size);
+    };
 
     function unlockByPoints(pts) {
       if (pts >= 200) document.getElementById('base-plant')?.classList.remove('locked');
@@ -521,7 +589,10 @@
       btn.classList.add('active');
       document.getElementById('ptab-'+tab).classList.add('visible');
       if (tab === 'mi-qr') {
-        setTimeout(() => ensureQR(userData?.displayName || 'EcoHéroe', userData?.numControl || '00000000'), 30);
+        setTimeout(() => {
+          const { displayName, escuela, grado, grupo, numLista } = userData;
+          ensureQR(displayName, escuela, grado, grupo, numLista);
+        }, 30);
       }
     };
 
@@ -529,7 +600,9 @@
       document.getElementById('edit-name').value    = userData.displayName || '';
       document.getElementById('edit-username').value= userData.username    || '';
       document.getElementById('edit-school').value  = userData.escuela     || '';
-      document.getElementById('edit-control').value = userData.numControl  || '';
+      document.getElementById('edit-grado').value   = userData.grado       || '';
+      document.getElementById('edit-grupo').value   = userData.grupo       || '';
+      document.getElementById('edit-lista').value   = userData.numLista    || '';
       document.getElementById('edit-modal').style.display='flex';
     };
     window.closeModal = () => document.getElementById('edit-modal').style.display='none';
@@ -538,16 +611,18 @@
       const name    = document.getElementById('edit-name').value.trim();
       const uname   = document.getElementById('edit-username').value.trim();
       const school  = document.getElementById('edit-school').value.trim();
-      const control = document.getElementById('edit-control').value.trim();
+      const grado   = document.getElementById('edit-grado').value;
+      const grupo   = document.getElementById('edit-grupo').value.trim();
+      const lista   = document.getElementById('edit-lista').value.trim();
 
       if (!name) { toast('El nombre es obligatorio','warning'); return; }
       
-      const updated = { ...userData, displayName: name, username: uname, escuela: school, numControl: control };
+      const updated = { ...userData, displayName: name, username: uname, escuela: school, grado, grupo, numLista: lista };
 
       if (currentUser.uid !== 'demo') {
         try { 
           await setDoc(doc(db,'users',currentUser.uid), { 
-            displayName: name, username: uname, escuela: school, numControl: control
+            displayName: name, username: uname, escuela: school, grado, grupo, numLista: lista
           }, { merge: true });
           userData = updated;
           renderProfile(); closeModal();
@@ -574,14 +649,17 @@
       reader.readAsDataURL(input.files[0]);
     };
 
-    function ensureQR(name, control) {
+    function ensureQR(name, school, grade, group, list) {
       const qrContainer = document.getElementById('qrcode');
       qrContainer.innerHTML = '';
-      const payload = `ECOAGENDA|${control}|${name}`;
+      // Formato solicitado: ECOAGENDA|nombre|apellido|nombreApellidos|escuela|grado|grupo|numeroDeLista
+      const fn = userData.firstName || '';
+      const ln = userData.lastName || '';
+      const payload = `ECOAGENDA|${fn}|${ln}|${name}|${school || '-'}|${grade || '-'}|${group || '-'}|${list || '-'}`;
       try {
         new QRCode(qrContainer, {
           text: payload, width: 200, height: 200,
-          colorDark: "#000000", colorLight: "#ffffff",
+          colorDark: "#064e3b", colorLight: "#ffffff",
           correctLevel: QRCode.CorrectLevel.H
         });
       } catch (e) {
