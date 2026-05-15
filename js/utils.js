@@ -73,7 +73,7 @@ export function initThemeToggle() {
   btn.className = 'theme-toggle-btn';
   btn.type = 'button';
   btn.title = 'Cambiar tema';
-  btn.textContent = stored === 'dark' ? '☀️' : '🌙';
+  btn.textContent = storedTheme === 'dark' ? '☀️' : '🌙';
   btn.onclick = () => {
     const next = toggleTheme();
     btn.textContent = next === 'dark' ? '☀️' : '🌙';
