@@ -28,28 +28,20 @@
     }
   ],
   "categories": ["education", "productivity", "lifestyle"],
-  "screenshots": [
-    {
-      "src": "/assets/img/screenshot-1.png",
-      "sizes": "1080x1920",
-      "type": "image/png",
-      "form_factor": "narrow"
-    }
-  ],
   "shortcuts": [
     {
       "name": "Nueva tarea",
       "short_name": "Tarea",
       "description": "Agregar una nueva tarea",
       "url": "/pages/agenda.html?action=add-task",
-      "icons": [{ "src": "/assets/img/shortcut-task.png", "sizes": "96x96" }]
+      "icons": [{ "src": "/assets/img/icon-96x96.png", "sizes": "96x96" }]
     },
     {
       "name": "Chat rápido",
       "short_name": "Chat",
       "description": "Abrir el chat",
       "url": "/pages/chat.html",
-      "icons": [{ "src": "/assets/img/shortcut-chat.png", "sizes": "96x96" }]
+      "icons": [{ "src": "/assets/img/icon-96x96.png", "sizes": "96x96" }]
     }
   ],
   "related_applications": [],
