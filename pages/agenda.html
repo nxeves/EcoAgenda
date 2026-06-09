@@ -355,8 +355,9 @@
   </div>
 
   <script type="module">
-    import { initParticles, toast, requestNotifications, runSmartReminders, initPushNotifications } from '../js/utils.js';
+    import { initParticles, toast, requestNotifications, runSmartReminders, initPushNotifications, triggerSWReminders } from '../js/utils.js';
     import { app, auth, db } from '../js/firebase.js';
+    import { initDB, saveTasks, saveSchedule } from '../js/indexeddb.js';
     import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
     import { collection, addDoc, query, where, getDocs, updateDoc, doc, deleteDoc, serverTimestamp, orderBy, writeBatch } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
@@ -373,6 +374,7 @@
     }
 
     onAuthStateChanged(auth, async (user) => {
+      await initDB(); // Inicializar base de datos local
       if (!user) { const d=sessionStorage.getItem('eco_demo'); if(!d) location.href='../index.html'; else { currentUID='demo'; loadDemoTasks(); renderCalendar(); renderScheduleGrid(); } return; }
       currentUID = user.uid;
       if (user.photoURL) document.getElementById('nav-avatar').src = user.photoURL;
@@ -443,6 +445,11 @@
         tasks = snaps.docs.map(d => ({ id:d.id, ...d.data() }));
         renderTasks(tasks);
         updateStats();
+        
+        // Sincronizar con IndexedDB para notificaciones offline
+        if (currentUID !== 'demo') {
+          await saveTasks(currentUID, tasks);
+        }
       } catch(e) { console.warn('Firestore error:',e); }
     }
 
@@ -485,24 +492,35 @@
     window.filterTasks = (prio) => renderTasks(prio==='todas' ? tasks : tasks.filter(t=>t.prioridad===prio));
 
     window.toggleTask = async (id) => {
-      const t = tasks.find(x=>x.id===id);
+      const t = tasks.find(x => x.id === id);
       if (!t) return;
       t.done = !t.done;
       if (currentUID !== 'demo') {
-        try { await updateDoc(doc(db,'tareas',id),{done:t.done}); } catch(e){}
+        try { await updateDoc(doc(db, 'tareas', id), { done: t.done }); } catch(e) {}
       }
       renderTasks(tasks); updateStats();
-      evalRemindersNow();
+      
+      // Sincronizar y avisar al SW
+      if (currentUID !== 'demo') {
+        await saveTasks(currentUID, tasks);
+        triggerSWReminders();
+      }
     };
 
     window.deleteTask = async (id) => {
-      if (!confirm('¿Eliminar esta tarea?')) return;
+      if (!confirm('¿Borrar esta tarea?')) return;
       tasks = tasks.filter(x=>x.id!==id);
       if (currentUID !== 'demo') {
         try { await deleteDoc(doc(db,'tareas',id)); } catch(e){}
       }
       renderTasks(tasks); updateStats();
       evalRemindersNow();
+
+      // Sincronizar y avisar al SW
+      if (currentUID !== 'demo') {
+        await saveTasks(currentUID, tasks);
+        triggerSWReminders();
+      }
     };
 
     // ── Add task modal ──────────────────────────────
@@ -537,6 +555,12 @@
       evalRemindersNow();
       closeModal('task-modal');
       toast('Tarea agregada 📝','success');
+      
+      // Sincronizar y avisar al SW
+      if (currentUID !== 'demo') {
+        await saveTasks(currentUID, tasks);
+        triggerSWReminders();
+      }
 
       // Clear form
       ['task-title','task-materia','task-notes'].forEach(id=>document.getElementById(id).value='');
@@ -680,6 +704,7 @@
 
       toast('📅 Horario importado a tu agenda','success');
       renderScheduleGrid();
+      triggerSWReminders(); // Avisar al SW para que programe recordatorios
       switchAgendaTab('horario', document.querySelectorAll('.atab')[1]);
     };
 
@@ -691,7 +716,12 @@
       try {
         const q = query(collection(db, 'horario'), where('uid', '==', currentUID));
         const snap = await getDocs(q);
-        return snap.docs.map(doc => doc.data());
+        const data = snap.docs.map(doc => doc.data());
+        
+        // Sincronizar con IndexedDB
+        await saveSchedule(currentUID, data);
+        
+        return data;
       } catch(e) {
         console.error("Error fetching schedule:", e);
         return [];

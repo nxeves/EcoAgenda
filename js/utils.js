@@ -300,6 +300,19 @@ export async function initPushNotifications({ app, db, uid, onForegroundMessage 
 
   try {
     const registration = await navigator.serviceWorker.register('/firebase-messaging-sw.js');
+    
+    // Intentar registrar Periodic Sync para recordatorios offline
+    if ('periodicSync' in registration) {
+      try {
+        const status = await navigator.permissions.query({ name: 'periodic-background-sync' });
+        if (status.state === 'granted') {
+          await registration.periodicSync.register('check-reminders', {
+            minInterval: 60 * 60 * 1000 // Intentar cada hora
+          });
+        }
+      } catch (e) { /* ignore */ }
+    }
+
     const messaging = getMessaging(app);
     const vapidKey = window.ECO_VAPID_KEY || localStorage.getItem('eco_vapid_key') || undefined;
     const token = vapidKey
@@ -320,10 +333,19 @@ export async function initPushNotifications({ app, db, uid, onForegroundMessage 
       if (typeof onForegroundMessage === 'function') onForegroundMessage(payload);
     });
 
+    // Avisar al SW que revise recordatorios ahora
+    triggerSWReminders();
+
     return { enabled: true, token: token || null };
   } catch (error) {
     console.warn('FCM init warning:', error);
     return { enabled: false, reason: 'init-error', error: error?.message || String(error) };
+  }
+}
+
+export function triggerSWReminders() {
+  if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
+    navigator.serviceWorker.controller.postMessage({ type: 'CHECK_REMINDERS' });
   }
 }
 

@@ -1,0 +1,58 @@
+{
+  "name": "EcoAgenda",
+  "short_name": "EcoAgenda",
+  "description": "Plataforma escolar ecológica con agenda, chat y notificaciones inteligentes",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0b5022",
+  "theme_color": "#0b5022",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "/assets/img/icon-96x96.png",
+      "sizes": "96x96",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/assets/img/icon-192x192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/assets/img/icon-512x512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "categories": ["education", "productivity", "lifestyle"],
+  "screenshots": [
+    {
+      "src": "/assets/img/screenshot-1.png",
+      "sizes": "1080x1920",
+      "type": "image/png",
+      "form_factor": "narrow"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Nueva tarea",
+      "short_name": "Tarea",
+      "description": "Agregar una nueva tarea",
+      "url": "/pages/agenda.html?action=add-task",
+      "icons": [{ "src": "/assets/img/shortcut-task.png", "sizes": "96x96" }]
+    },
+    {
+      "name": "Chat rápido",
+      "short_name": "Chat",
+      "description": "Abrir el chat",
+      "url": "/pages/chat.html",
+      "icons": [{ "src": "/assets/img/shortcut-chat.png", "sizes": "96x96" }]
+    }
+  ],
+  "related_applications": [],
+  "prefer_related_applications": false,
+  "scope": "/"
+}
