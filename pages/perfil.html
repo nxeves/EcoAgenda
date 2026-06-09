@@ -445,6 +445,17 @@
               </div>
               <div class="toggle on" id="tog-sound" onclick="toggleSetting(this,'sound')"></div>
             </div>
+            <div class="setting-row">
+              <div class="setting-info">
+                <div class="setting-label">Rendimiento (FPS)</div>
+                <div class="setting-sub">Límite de fotogramas</div>
+              </div>
+              <select class="input-field" id="fps-limit" style="width: 80px; padding: 4px; font-size: 0.8rem; background: var(--ig-card); color: white; border-color: var(--ig-border);" onchange="changeFPS(this.value)">
+                <option value="60">60 FPS</option>
+                <option value="90">90 FPS</option>
+                <option value="120">120 FPS</option>
+              </select>
+            </div>
             <div class="setting-row" style="border:none;">
               <div class="setting-info">
                 <div class="setting-label">Link de Perfil</div>
@@ -596,7 +607,15 @@
       
       const storedFontSize = localStorage.getItem('eco_font_size') || 17;
       document.getElementById('font-range').value = storedFontSize;
+
+      const storedFPS = localStorage.getItem('eco_target_fps') || '60';
+      document.getElementById('fps-limit').value = storedFPS;
     }
+
+    window.changeFPS = (fps) => {
+      localStorage.setItem('eco_target_fps', fps);
+      toast(`Rendimiento ajustado a ${fps} FPS`, 'info');
+    };
 
     window.changeFontSize = (size) => {
       applyFontSize(size);

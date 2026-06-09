@@ -308,9 +308,10 @@
        FIREBASE AUTH (módulo ES6)
   ═══════════════════════════════════════════════════ -->
   <script type="module">
-    import { initParticles } from '../js/utils.js';
-    import { auth } from '../js/firebase.js';
+    import { initParticles, toast } from '../js/utils.js';
+    import { auth, db } from '../js/firebase.js';
     import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+    import { doc, updateDoc, increment } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
     initParticles();
 
@@ -320,6 +321,21 @@
       if (!currentUID) { location.href = '../index.html'; return; }
       window.renderLocalScores?.();
     });
+
+    // Función para actualizar el ranking global
+    window.updateGlobalRanking = async (points) => {
+      if (!currentUID || currentUID === 'demo') return;
+      
+      try {
+        const userRef = doc(db, 'users', currentUID);
+        await updateDoc(userRef, {
+          puntos: increment(points)
+        });
+        toast(`+${points} puntos añadidos al ranking global 🏆`, 'success');
+      } catch (error) {
+        console.error("Error actualizando ranking:", error);
+      }
+    };
   </script>
 
   <!-- ═══════════════════════════════════════════════════
@@ -420,6 +436,11 @@
     game.gamesPlayed = all.length;
     renderLocalScores();
     updateHUD();
+
+    // Actualizar ranking global si no es demo
+    if (window.updateGlobalRanking) {
+      window.updateGlobalRanking(game.score);
+    }
   }
 
   window.renderLocalScores = function () {
@@ -1165,13 +1186,26 @@
      LOOP PRINCIPAL
   ═══════════════════════════════════ */
   let lastTime = performance.now();
+  let fpsInterval = 1000 / 60; // Default
 
   function loop(now) {
     if (!game.running) return;
-    const dt = Math.min((now - lastTime) / 1000, 0.05);
-    lastTime = now;
-    update(dt);
-    renderer.render(scene, camera);
+    
+    // FPS Limiter
+    const targetFPS = parseInt(localStorage.getItem('eco_target_fps') || '60');
+    fpsInterval = 1000 / targetFPS;
+    
+    const elapsed = now - lastTime;
+    
+    if (elapsed >= fpsInterval) {
+      // Ajustar lastTime al "frame" ideal para mayor estabilidad
+      lastTime = now - (elapsed % fpsInterval);
+      
+      const dt = Math.min(elapsed / 1000, 0.05);
+      update(dt);
+      renderer.render(scene, camera);
+    }
+    
     requestAnimationFrame(loop);
   }
 

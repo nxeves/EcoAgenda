@@ -159,21 +159,31 @@ export function initParticles(canvasId = 'bg-canvas') {
     });
   }
 
-  function draw() {
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-    particles.forEach(p => {
-      ctx.beginPath();
-      ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
-      ctx.fillStyle = `rgba(34,197,94,${p.a * 0.6})`;
-      ctx.fill();
-      p.x += p.vx; p.y += p.vy;
-      if (p.y < -10) { p.y = canvas.height + 10; p.x = Math.random() * canvas.width; }
-      if (p.x < -10) p.x = canvas.width + 10;
-      if (p.x > canvas.width + 10) p.x = -10;
-    });
+  let lastTime = performance.now();
+
+  function draw(now) {
+    const targetFPS = parseInt(localStorage.getItem('eco_target_fps') || '60');
+    const interval = 1000 / targetFPS;
+    const elapsed = now - lastTime;
+
+    if (elapsed >= interval) {
+      lastTime = now - (elapsed % interval);
+      
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      particles.forEach(p => {
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+        ctx.fillStyle = `rgba(34,197,94,${p.a * 0.6})`;
+        ctx.fill();
+        p.x += p.vx; p.y += p.vy;
+        if (p.y < -10) { p.y = canvas.height + 10; p.x = Math.random() * canvas.width; }
+        if (p.x < -10) p.x = canvas.width + 10;
+        if (p.x > canvas.width + 10) p.x = -10;
+      });
+    }
     requestAnimationFrame(draw);
   }
-  draw();
+  requestAnimationFrame(draw);
 }
 
 // ── Generate room code ────────────────
