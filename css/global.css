@@ -206,6 +206,123 @@ body {
   display: flex; align-items: center; gap: 12px;
 }
 
+/* ── Mobile Navigation 9:16 Optimization ── */
+@media (max-width: 768px) {
+  :root {
+    --nav-h: 0px; /* Top nav disappears or becomes minimal */
+  }
+
+  .eco-nav {
+    top: auto; bottom: 0;
+    height: var(--mobile-nav-h);
+    padding-bottom: env(safe-area-inset-bottom);
+    border-top: 1px solid var(--border-soft);
+    border-bottom: none;
+    background: rgba(15, 15, 15, 0.95);
+  }
+
+  .eco-nav .container {
+    padding: 0;
+    justify-content: center;
+  }
+
+  .nav-logo, .nav-user { display: none; } /* Hide logo and user avatar in bottom nav */
+
+  .nav-links {
+    width: 100%;
+    justify-content: flex-start;
+    gap: 0;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    padding: 0 10px;
+  }
+
+  .nav-links::-webkit-scrollbar { display: none; }
+
+  .nav-links li {
+    flex: 0 0 72px; /* Fixed width for each item in scrollable nav */
+  }
+
+  /* Smooth FPS Transitions */
+  .fps-90 body, .fps-120 body {
+    --t-mid: 0.2s;
+    --t-slow: 0.4s;
+  }
+
+  .fps-120 * {
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+
+
+  .nav-links a {
+    padding: 10px 0;
+    font-size: 0.6rem;
+    border-radius: 0;
+    background: transparent !important;
+  }
+
+  .nav-links a .nav-icon {
+    font-size: 1.4rem;
+    margin-bottom: 2px;
+  }
+
+  .nav-links a.active {
+    color: var(--green-400);
+  }
+
+  .nav-links a.active::after {
+    top: 0; bottom: auto;
+    width: 20px; height: 2px;
+    border-radius: 2px;
+  }
+
+  .main-content {
+    padding-top: 20px;
+    padding-bottom: calc(var(--mobile-nav-h) + 20px);
+  }
+
+  .container {
+    padding: 0 16px;
+  }
+
+  /* Adjust typography for mobile */
+  .section-title { font-size: 1.5rem !important; }
+  .section-subtitle { font-size: 0.85rem !important; }
+
+  /* 9:16 App-like Experience */
+  body {
+    font-size: 16px; /* Base font size for mobile */
+  }
+
+  .card {
+    padding: 16px;
+    border-radius: var(--r-md);
+  }
+
+  .btn {
+    width: 100%; /* Full width buttons on mobile usually look better */
+    padding: 14px 20px;
+    font-size: 0.95rem;
+  }
+
+  .grid-2, .grid-3, .grid-4 {
+    grid-template-columns: 1fr !important; /* Stack grids on mobile */
+    gap: 12px;
+  }
+
+  /* Bottom nav extra polish */
+  .eco-nav {
+    box-shadow: 0 -10px 25px rgba(0,0,0,0.3);
+  }
+  
+  /* Prevent content from being hidden behind nav */
+  .page-wrap {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+}
+
 .theme-toggle-btn {
   width: 34px;
   height: 34px;

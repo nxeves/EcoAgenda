@@ -6,6 +6,11 @@
   <title>EcoAgenda — Perfil</title>
   <link rel="stylesheet" href="../css/global.css" />
   <link rel="stylesheet" href="../css/componentes.css" />
+  <link rel="manifest" href="/manifest.json" />
+  <meta name="theme-color" content="#0b5022" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <link rel="apple-touch-icon" href="/assets/img/icon-192x192.png" />
   <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
   <style>
     :root {
@@ -355,7 +360,7 @@
           <span class="nav-icon">🏅</span>
           <span class="tab-label">Logros</span>
         </button>
-        <button class="ptab" onclick="switchTab('ajustes',this)">
+        <button class="ptab" onclick="location.href='ajustes.html'">
           <span class="nav-icon">⚙️</span>
           <span class="tab-label">Ajustes</span>
         </button>
@@ -415,55 +420,6 @@
         <!-- LOGROS TAB -->
         <div class="ptab-pane" id="ptab-logros">
           <div id="achievements-list"></div>
-        </div>
-
-        <!-- AJUSTES TAB -->
-        <div class="ptab-pane" id="ptab-ajustes">
-          <div class="content-card">
-            <div class="setting-row">
-              <div class="setting-info">
-                <div class="setting-label">Tamaño de letra</div>
-                <div class="setting-sub">Ajusta el texto de la app</div>
-              </div>
-              <div class="font-slider-wrap">
-                <span style="font-size: 0.8rem;">a</span>
-                <input type="range" min="14" max="24" value="17" class="font-slider" id="font-range" oninput="changeFontSize(this.value)">
-                <span style="font-size: 1.4rem;">A</span>
-              </div>
-            </div>
-            <div class="setting-row">
-              <div class="setting-info">
-                <div class="setting-label">Notificaciones</div>
-                <div class="setting-sub">Alertas de tareas</div>
-              </div>
-              <div class="toggle on" id="tog-notif" onclick="toggleSetting(this,'notif')"></div>
-            </div>
-            <div class="setting-row">
-              <div class="setting-info">
-                <div class="setting-label">Efectos de sonido</div>
-                <div class="setting-sub">Sonidos del sistema</div>
-              </div>
-              <div class="toggle on" id="tog-sound" onclick="toggleSetting(this,'sound')"></div>
-            </div>
-            <div class="setting-row">
-              <div class="setting-info">
-                <div class="setting-label">Rendimiento (FPS)</div>
-                <div class="setting-sub">Límite de fotogramas</div>
-              </div>
-              <select class="input-field" id="fps-limit" style="width: 80px; padding: 4px; font-size: 0.8rem; background: var(--ig-card); color: white; border-color: var(--ig-border);" onchange="changeFPS(this.value)">
-                <option value="60">60 FPS</option>
-                <option value="90">90 FPS</option>
-                <option value="120">120 FPS</option>
-              </select>
-            </div>
-            <div class="setting-row" style="border:none;">
-              <div class="setting-info">
-                <div class="setting-label">Link de Perfil</div>
-                <div class="setting-sub">Copiar para compartir</div>
-              </div>
-              <button class="btn btn-secondary btn-sm" onclick="copyProfileLink()">📋</button>
-            </div>
-          </div>
         </div>
       </div>
 

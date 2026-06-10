@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>EcoAgenda — Ajustes</title>
+  <link rel="stylesheet" href="../css/global.css" />
+  <link rel="stylesheet" href="../css/componentes.css" />
+  <link rel="manifest" href="/manifest.json" />
+  <meta name="theme-color" content="#0b5022" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <link rel="apple-touch-icon" href="/assets/img/icon-192x192.png" />
+  <style>
+    .settings-list {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+    .settings-group {
+      background: var(--bg-card);
+      border: 1px solid var(--border-soft);
+      border-radius: var(--r-lg);
+      overflow: hidden;
+    }
+    .settings-group-title {
+      padding: 16px 20px 8px;
+      font-size: 0.75rem;
+      font-weight: 800;
+      color: var(--green-400);
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+    .setting-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 16px 20px;
+      border-bottom: 1px solid var(--border-soft);
+      transition: background 0.2s;
+    }
+    .setting-item:last-child { border-bottom: none; }
+    .setting-item:active { background: var(--bg-elevated); }
+
+    .setting-info { flex: 1; }
+    .setting-label { font-size: 0.95rem; font-weight: 600; color: var(--text-primary); }
+    .setting-sub { font-size: 0.75rem; color: var(--text-muted); }
+
+    .setting-action { margin-left: 16px; }
+
+    /* Custom Toggle */
+    .toggle {
+      width: 44px; height: 24px;
+      background: var(--bg-elevated);
+      border-radius: 12px;
+      position: relative;
+      cursor: pointer;
+      transition: background 0.3s;
+    }
+    .toggle::after {
+      content: '';
+      position: absolute; top: 2px; left: 2px;
+      width: 20px; height: 20px;
+      background: white;
+      border-radius: 50%;
+      transition: transform 0.3s;
+    }
+    .toggle.on { background: var(--green-500); }
+    .toggle.on::after { transform: translateX(20px); }
+
+    /* FPS Select style */
+    .fps-select {
+      background: var(--bg-elevated);
+      color: var(--text-primary);
+      border: 1px solid var(--border-mid);
+      border-radius: 8px;
+      padding: 6px 10px;
+      font-size: 0.85rem;
+      font-family: var(--font-body);
+    }
+
+    /* Font Slider */
+    .font-slider-wrap {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      background: var(--bg-elevated);
+      padding: 10px 16px;
+      border-radius: var(--r-md);
+      margin-top: 8px;
+    }
+    .font-slider {
+      flex: 1;
+      height: 4px;
+      background: var(--border-soft);
+      border-radius: 2px;
+      -webkit-appearance: none;
+    }
+    .font-slider::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      width: 18px; height: 18px;
+      background: var(--green-400);
+      border-radius: 50%;
+      cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+  <canvas id="bg-canvas"></canvas>
+  <div id="toast-container"></div>
+
+  <nav class="eco-nav">
+    <div class="container">
+      <a href="inicio.html" class="nav-logo"><div class="logo-dot"></div>EcoAgenda</a>
+      <ul class="nav-links">
+        <li><a href="inicio.html"><span class="nav-icon">🏠</span>Inicio</a></li>
+        <li><a href="agenda.html"><span class="nav-icon">📝</span>Agenda</a></li>
+        <li><a href="reciclaje.html"><span class="nav-icon">♻️</span>Recicla</a></li>
+        <li><a href="chat.html"><span class="nav-icon">💬</span>Chat</a></li>
+        <li><a href="juego.html"><span class="nav-icon">🎮</span>Juego</a></li>
+        <li><a href="ranking.html"><span class="nav-icon">🏆</span>Ranking</a></li>
+        <li><a href="ecobot.html"><span class="nav-icon">🤖</span>EcoBot</a></li>
+        <li><a href="comentarios.html"><span class="nav-icon">💭</span>Comentarios</a></li>
+        <li><a href="perfil.html" class="active"><span class="nav-icon">👤</span>Perfil</a></li>
+      </ul>
+      <div class="nav-user">
+        <img id="nav-avatar" src="https://ui-avatars.com/api/?name=Eco&background=0b5022&color=86efac&bold=true" class="nav-avatar" />
+      </div>
+    </div>
+  </nav>
+
+  <div class="page-wrap main-content">
+    <div class="container">
+      <div style="display:flex; align-items:center; gap:12px; margin-bottom:24px;">
+        <button class="btn btn-ghost btn-sm" onclick="location.href='perfil.html'" style="font-size:1.2rem;">←</button>
+        <h1 class="section-title" style="margin:0;">Ajustes</h1>
+      </div>
+
+      <div class="settings-list">
+        <!-- RENDIMIENTO -->
+        <div class="settings-group">
+          <div class="settings-group-title">Rendimiento y Pantalla</div>
+          
+          <div class="setting-item">
+            <div class="setting-info">
+              <div class="setting-label">Frecuencia de refresco (FPS)</div>
+              <div class="setting-sub">Ajusta la fluidez de la app y el juego</div>
+            </div>
+            <div class="setting-action">
+              <select class="fps-select" id="fps-limit" onchange="changeFPS(this.value)">
+                <option value="60">60 FPS</option>
+                <option value="90">90 FPS</option>
+                <option value="120">120 FPS</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="setting-item" style="flex-direction: column; align-items: flex-start;">
+            <div class="setting-info">
+              <div class="setting-label">Tamaño de letra</div>
+              <div class="setting-sub">Personaliza el tamaño del texto</div>
+            </div>
+            <div class="font-slider-wrap" style="width: 100%;">
+              <span style="font-size: 0.7rem;">a</span>
+              <input type="range" min="14" max="24" value="17" class="font-slider" id="font-range" oninput="changeFontSize(this.value)">
+              <span style="font-size: 1.2rem;">A</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- NOTIFICACIONES -->
+        <div class="settings-group">
+          <div class="settings-group-title">Notificaciones</div>
+          
+          <div class="setting-item">
+            <div class="setting-info">
+              <div class="setting-label">Recordatorios de tareas</div>
+              <div class="setting-sub">Recibe alertas antes de que venzan</div>
+            </div>
+            <div class="setting-action">
+              <div class="toggle on" id="tog-notif" onclick="toggleSetting(this,'notif')"></div>
+            </div>
+          </div>
+
+          <div class="setting-item">
+            <div class="setting-info">
+              <div class="setting-label">Efectos de sonido</div>
+              <div class="setting-sub">Sonidos al interactuar y jugar</div>
+            </div>
+            <div class="setting-action">
+              <div class="toggle on" id="tog-sound" onclick="toggleSetting(this,'sound')"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- CUENTA -->
+        <div class="settings-group">
+          <div class="settings-group-title">Cuenta y Seguridad</div>
+          
+          <div class="setting-item" onclick="copyProfileLink()">
+            <div class="setting-info">
+              <div class="setting-label">Compartir perfil</div>
+              <div class="setting-sub">Copia el enlace de tu perfil</div>
+            </div>
+            <div class="setting-action">📋</div>
+          </div>
+
+          <div class="setting-item" onclick="logout()" style="color: var(--accent-rose);">
+            <div class="setting-info">
+              <div class="setting-label" style="color: var(--accent-rose);">Cerrar sesión</div>
+              <div class="setting-sub">Salir de tu cuenta actual</div>
+            </div>
+            <div class="setting-action">🚪</div>
+          </div>
+        </div>
+      </div>
+
+      <div style="text-align:center; margin-top:32px; color:var(--text-ghost); font-size:0.75rem;">
+        EcoAgenda v1.2.0<br>Hecho con 🌱 para el planeta
+      </div>
+    </div>
+  </div>
+
+  <script type="module">
+    import { initParticles, toast, applyFontSize, applyFPS } from '../js/utils.js';
+    import { auth } from '../js/firebase.js';
+    import { onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+
+    initParticles();
+
+    onAuthStateChanged(auth, user => {
+      if (!user && !sessionStorage.getItem('eco_demo')) location.href='../index.html';
+      if (user?.photoURL) document.getElementById('nav-avatar').src = user.photoURL;
+      loadSettings();
+    });
+
+    function loadSettings() {
+      const s = JSON.parse(localStorage.getItem('eco_settings') || '{}');
+      if (s.sound === false) document.getElementById('tog-sound').classList.remove('on');
+      if (s.notif === false) document.getElementById('tog-notif').classList.remove('on');
+      
+      const storedFontSize = localStorage.getItem('eco_font_size') || 17;
+      document.getElementById('font-range').value = storedFontSize;
+      
+      const storedFPS = localStorage.getItem('eco_target_fps') || '60';
+      document.getElementById('fps-limit').value = storedFPS;
+    }
+
+    window.changeFPS = (fps) => {
+      localStorage.setItem('eco_target_fps', fps);
+      applyFPS(); // Aplicar cambios visuales de FPS inmediatamente
+      toast(`Rendimiento ajustado a ${fps} FPS`, 'info');
+    };
+
+    window.changeFontSize = (size) => {
+      applyFontSize(size);
+    };
+
+    window.toggleSetting = (el, key) => {
+      el.classList.toggle('on');
+      const s = JSON.parse(localStorage.getItem('eco_settings') || '{}');
+      s[key] = el.classList.contains('on');
+      localStorage.setItem('eco_settings', JSON.stringify(s));
+    };
+
+    window.copyProfileLink = () => {
+      const url = window.location.origin + '/pages/perfil.html';
+      navigator.clipboard.writeText(url).then(() => toast('Enlace copiado al portapapeles', 'success'));
+    };
+
+    window.logout = async () => {
+      if (!confirm('¿Seguro que quieres cerrar sesión?')) return;
+      sessionStorage.clear();
+      await signOut(auth);
+      location.href = '../index.html';
+    };
+  </script>
+</body>
+</html>

@@ -6,6 +6,11 @@
   <title>EcoAgenda — Juego</title>
   <link rel="stylesheet" href="../css/global.css" />
   <link rel="stylesheet" href="../css/componentes.css" />
+  <link rel="manifest" href="/manifest.json" />
+  <meta name="theme-color" content="#0b5022" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <link rel="apple-touch-icon" href="/assets/img/icon-192x192.png" />
   <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
   <style>
     /* ── Página ── */
@@ -54,14 +59,24 @@
     /* ── Canvas principal — MÁS GRANDE ── */
     .runner-canvas-wrap {
       position:relative; overflow:hidden;
-      border-radius:28px; border:1.5px solid rgba(100,220,140,0.18);
+      border-radius:0; border:none;
       background:#020e07;
-      box-shadow: 0 40px 100px rgba(0,0,0,0.5), 0 0 0 1px rgba(255,255,255,0.03) inset;
-      margin-bottom:18px;
-      /* Altura grande — 70 vh mínimo, máximo pantalla completa menos nav */
-      height: clamp(480px, 72vh, 820px);
+      box-shadow: none;
+      margin-bottom:0;
+      /* Ocupar todo el alto disponible restando nav y header */
+      height: calc(100vh - 120px);
+      width: 100vw;
+      margin-left: -24px; /* Compensar container padding */
     }
-    #three-canvas { width:100% !important; height:100% !important; display:block; border-radius:28px; }
+    #three-canvas { width:100% !important; height:100% !important; display:block; border-radius:0; }
+
+    /* Bloquear scroll cuando el juego está activo */
+    body.game-active {
+      overflow: hidden;
+      touch-action: none;
+      position: fixed;
+      width: 100%;
+    }
 
     /* ── HUD flotante dentro del canvas ── */
     #hud-overlay {
@@ -171,13 +186,16 @@
       .runner-canvas-wrap { height:clamp(320px,60vh,600px); }
       #hud-score-3d  { font-size:1.8rem; }
     }
-    @media (max-width:520px) {
-      .runner-title h1 { font-size:1.6rem; }
-      .hud-card strong { font-size:1.3rem; }
+    @media(max-width:520px) {
+      .runner-title h1 { font-size: 1.4rem; }
+      .hud-card strong { font-size: 1.1rem; }
       .btn-start,.btn-secondary { width:100%; justify-content:center; }
-      .runner-canvas-wrap { height:clamp(280px,55vh,480px); }
-      #hud-score-3d { font-size:1.5rem; }
-      .life-icon     { font-size:1.6rem; }
+      .runner-canvas-wrap { 
+        height: calc(100vh - 100px); 
+        margin-left: -16px; /* Match mobile container padding */
+      }
+      #hud-score-3d { font-size: 2rem; }
+      .life-icon     { font-size: 1.4rem; }
     }
   </style>
 </head>
@@ -1156,6 +1174,7 @@
     resetGame();
     document.getElementById('overlay').style.display = 'none';
     document.getElementById('start-btn').textContent = 'Jugando...';
+    document.body.classList.add('game-active'); // Bloquear scroll
     playEffect('start');
     game.running = true;
     lastTime = performance.now();
@@ -1167,6 +1186,7 @@
   ═══════════════════════════════════ */
   function gameOver() {
     game.running = false;
+    document.body.classList.remove('game-active'); // Desbloquear scroll
     playEffect('gameover');
     saveScore();
     const isRecord = game.score >= game.bestScore;

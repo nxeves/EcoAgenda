@@ -38,6 +38,23 @@ export function toast(msg, type = 'success', duration = 3500) {
 // ── Theme system (dark / light) ─────────
 const THEME_KEY = 'eco_theme';
 const FONT_SIZE_KEY = 'eco_font_size';
+const FPS_KEY = 'eco_target_fps';
+
+export function applyFPS() {
+  const targetFPS = parseInt(localStorage.getItem(FPS_KEY) || '60');
+  // Aplicar una clase al body para transiciones CSS más rápidas si los FPS son altos
+  document.body.classList.remove('fps-60', 'fps-90', 'fps-120');
+  document.body.classList.add(`fps-${targetFPS}`);
+  
+  // Si es 120 FPS, podemos habilitar animaciones más complejas o suaves vía CSS
+  if (targetFPS >= 90) {
+    document.documentElement.style.setProperty('--t-mid', '0.2s');
+    document.documentElement.style.setProperty('--t-slow', '0.4s');
+  } else {
+    document.documentElement.style.setProperty('--t-mid', '0.3s');
+    document.documentElement.style.setProperty('--t-slow', '0.6s');
+  }
+}
 
 export function applyTheme(theme = 'dark') {
   const safeTheme = theme === 'light' ? 'light' : 'dark';
@@ -58,6 +75,7 @@ export function toggleTheme() {
 }
 
 export function initThemeToggle() {
+  applyFPS();
   const storedTheme = localStorage.getItem(THEME_KEY) || 'dark';
   applyTheme(storedTheme);
   
