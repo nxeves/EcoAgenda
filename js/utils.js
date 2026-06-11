@@ -84,6 +84,23 @@ export function initThemeToggle() {
     applyFontSize(storedFontSize);
   }
 
+  // ── Single Instance Lock (Cerrar pestañas duplicadas) ──
+  const bc = new BroadcastChannel('eco_agenda_instance');
+  bc.postMessage({ type: 'NEW_INSTANCE_OPENED', time: Date.now() });
+
+  bc.onmessage = (ev) => {
+    if (ev.data.type === 'NEW_INSTANCE_OPENED') {
+      // Si se abre otra pestaña, esta se redirige a una página de "sesión activa" o se cierra
+      bc.postMessage({ type: 'INSTANCE_ALREADY_EXISTS' });
+      toast('EcoAgenda ya está abierta en otra pestaña. Se ha detectado una nueva instancia.', 'warning');
+    }
+    if (ev.data.type === 'INSTANCE_ALREADY_EXISTS') {
+      // Esta es la pestaña nueva, avisar y cerrar
+      alert('EcoAgenda ya está abierta en otra pestaña. Por seguridad y rendimiento, solo se permite una instancia activa.');
+      window.location.href = 'https://www.google.com'; // O cualquier otra página para "sacarlo"
+    }
+  };
+
   // Inject a shared toggle so we do not duplicate markup in every HTML file.
   if (document.getElementById('theme-toggle-btn')) return;
   const btn = document.createElement('button');

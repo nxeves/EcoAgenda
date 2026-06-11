@@ -1172,6 +1172,21 @@
   window.startRunner = function () {
     if (game.running) return;
     resetGame();
+    
+    const gameCanvas = document.querySelector('.runner-canvas-wrap');
+    
+    // 1. Scroll automático al canvas del juego
+    gameCanvas.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    
+    // 2. Intentar pantalla completa (Fullscreen API)
+    if (gameCanvas.requestFullscreen) {
+      gameCanvas.requestFullscreen();
+    } else if (gameCanvas.webkitRequestFullscreen) {
+      gameCanvas.webkitRequestFullscreen();
+    } else if (gameCanvas.msRequestFullscreen) {
+      gameCanvas.msRequestFullscreen();
+    }
+
     document.getElementById('overlay').style.display = 'none';
     document.getElementById('start-btn').textContent = 'Jugando...';
     document.body.classList.add('game-active'); // Bloquear scroll
