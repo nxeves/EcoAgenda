@@ -40,21 +40,34 @@ exports.handler = async function(event) {
       if (typeof m.content === 'string') {
         content = m.content;
       } else if (Array.isArray(m.content)) {
-        content = m.content.map(part => {
+        // Separar texto e imágenes para procesamiento correcto
+        const textParts = [];
+        const imageParts = [];
+        
+        m.content.forEach(part => {
           if (part.type === 'text') {
-            return { type: 'text', text: part.text };
+            textParts.push({ type: 'text', text: part.text });
           } else if (part.type === 'image' || part.type === 'image_url') {
             hasImage = true;
-            const base64Data = part.source?.data || part.image_url?.url?.split(',')[1] || part.data;
-            return {
+            // Extraer base64 de diferentes formatos posibles
+            let base64Data = part.source?.data || part.image_url?.url?.split(',')[1] || part.data;
+            
+            // Asegurar que sea puro base64 sin prefijo
+            if (base64Data && base64Data.includes(',')) {
+              base64Data = base64Data.split(',')[1];
+            }
+            
+            imageParts.push({
               type: "image_url",
               image_url: {
                 url: `data:image/jpeg;base64,${base64Data}`
               }
-            };
+            });
           }
-          return part;
         });
+        
+        // Combinar imágenes primero, luego texto (formato recomendado por Groq)
+        content = [...imageParts, ...textParts];
       }
       
       chatMessages.push({
@@ -64,8 +77,9 @@ exports.handler = async function(event) {
     });
 
     // Seleccionar modelo según si hay imagen
+    // Usar llama-2-vision para mejor manejo de imágenes, o el modelo 70b para texto
     const model = hasImage 
-      ? 'meta-llama/llama-4-scout-17b-16e-instruct' 
+      ? 'llava-1.5-7b-4096' 
       : 'llama-3.3-70b-versatile';
 
     const apiUrl = 'https://api.groq.com/openai/v1/chat/completions';

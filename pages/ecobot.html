@@ -380,9 +380,11 @@
       eco: `Eres EcoBot, un asistente experto en reciclaje y ecología integrado en EcoAgenda, una app escolar. 
 Responde siempre en español de manera amigable y educativa. 
 Cuando alguien pregunte cómo reciclar algo, da: el contenedor correcto (papel=azul, plástico=amarillo, vidrio=verde, orgánico=marrón, metal=lila, no reciclable=gris), pasos de preparación y un dato ecológico interesante.
+Si recibes una imagen, analízala e identifica qué materiales contiene y cómo reciclar cada uno. NUNCA muestres código base64 o datos técnicos.
 Usa emojis relevantes. Sé conciso (máx 3-4 párrafos). Termina con un consejo ecológico o dato curioso.`,
 
       tutor: `Eres EcoBot en modo tutor escolar. Ayudas a estudiantes con sus tareas y materias escolares (matemáticas, español, ciencias, historia, etc.).
+Si recibes una imagen con problemas o ejercicios, resuélvelos paso a paso en lenguaje simple. NUNCA muestres código raw o datos técnicos.
 Explica con pasos claros y ejemplos. Usa lenguaje simple y amigable. Incluye emojis para hacer más ameno el aprendizaje.
 Responde siempre en español.`,
 
@@ -391,10 +393,12 @@ Responde siempre en español.`,
 - Horas de cada clase
 - Nombre de cada materia
 - Salones si aparecen
-Presenta la información en formato de tabla clara. Sugiere cómo organizar mejor el tiempo de estudio.
+Presenta la información en formato de tabla clara y fácil de leer. Sugiere cómo organizar mejor el tiempo de estudio.
+IMPORTANTE: NUNCA muestres código base64, datos técnicos o información cruda. Siempre formatea bonito.
 Responde en español.`,
 
       compañero: `Eres EcoBot, el compañero ecológico amigable de EcoAgenda. Eres positivo, motivador y apasionado por el medio ambiente.
+Si recibes una imagen, comenta sobre lo que ves de forma positiva y motivadora. NUNCA muestres datos técnicos o código.
 Celebra los logros del usuario, motívalo a reciclar y cuidar el planeta. Usa emojis y un tono juvenil y entusiasta.
 Responde en español.`
     };
@@ -446,7 +450,7 @@ Responde en español.`
 
       const userContent = imageData
         ? [{ type:'image', source:{ type:'base64', media_type:'image/jpeg', data:imageData }},
-           { type:'text',  text: userText || 'Analiza esta imagen' }]
+           { type:'text',  text: userText }]
         : userText;
 
       conversationHistory.push({ role:'user', content:userContent });
@@ -457,16 +461,30 @@ Responde en español.`
           headers:{ 'Content-Type':'application/json' },
           body:JSON.stringify({
             model:'gemini-1.5-flash',
-            max_tokens:1000,
+            max_tokens:1200,
             system: SYSTEM_PROMPTS[currentMode],
             messages: conversationHistory
           })
         });
 
-        if (!resp.ok) throw new Error('HTTP '+resp.status);
+        if (!resp.ok) {
+          const errorData = await resp.json().catch(() => ({}));
+          throw new Error(errorData.error || `HTTP ${resp.status}: Error del servidor`);
+        }
 
         const data = await resp.json();
-        const reply = data.content?.[0]?.text || 'No pude generar una respuesta.';
+        let reply = data.content?.[0]?.text || 'No pude generar una respuesta.';
+        
+        // Filtrar respuestas limpias: eliminar código base64 y datos crudos
+        reply = reply
+          .replace(/data:image\/[^;]+;base64,[A-Za-z0-9+/=]{20,}/g, '[imagen procesada]')
+          .replace(/base64:|;base64/g, '')
+          .trim();
+        
+        // Si la respuesta está muy corta o vacía, pedir aclaración
+        if (!reply || reply.length < 10) {
+          reply = '😅 La imagen no se procesó correctamente. Por favor intenta con una imagen más clara o envía un texto describiendo qué necesitas.';
+        }
 
         conversationHistory.push({ role:'assistant', content:reply });
 
@@ -484,7 +502,16 @@ Responde en español.`
 
       } catch(e) {
         hideTyping();
-        addBotMessage('❌ Lo siento, no pude conectarme. Verifica tu conexión a internet e inténtalo de nuevo. Si el problema persiste, asegúrate de que la API de Gemini esté configurada en Netlify.');
+        const errorMsg = e.message || 'Error de conexión';
+        console.error('Error en EcoBot:', errorMsg);
+        
+        if (errorMsg.includes('Failed to fetch') || errorMsg.includes('Network')) {
+          addBotMessage('📡 No hay conexión a internet. Verifica tu conexión y vuelve a intentar.');
+        } else if (errorMsg.includes('timeout') || errorMsg.includes('503')) {
+          addBotMessage('⏱️ El servidor está muy ocupado. Espera un momento e intenta de nuevo.');
+        } else {
+          addBotMessage(`❌ Lo siento, no pude procesar tu solicitud. Intenta con una imagen más clara o envía un texto. (Error: ${errorMsg})`);
+        }
       }
 
       msgCount++;
@@ -496,13 +523,36 @@ Responde en español.`
       if (!input.files[0]) return;
       const file = input.files[0];
 
+      // Validar que sea imagen
+      if (!file.type.startsWith('image/')) {
+        const errorMsg = 'Por favor selecciona un archivo de imagen válido';
+        console.warn(errorMsg);
+        // Mostrar alerta si toast no está disponible
+        if (window.toast) window.toast(errorMsg, 'error');
+        input.value='';
+        return;
+      }
+
       // Show preview in chat
       const reader = new FileReader();
       reader.onload = async (e) => {
         const dataURL = e.target.result;
         addUserImageMessage(dataURL);
-        const base64 = dataURL.split(',')[1];
-        await callEcoBot(currentMode==='agenda' ? 'Por favor analiza este horario escolar y extrae toda la información' : 'Analiza esta imagen y ayúdame', base64);
+        
+        // Extraer solo base64 puro
+        const base64 = dataURL.includes(',') ? dataURL.split(',')[1] : dataURL;
+        
+        // Mensaje contextual según el modo
+        let contextMsg = '';
+        if (currentMode === 'agenda') {
+          contextMsg = 'Por favor analiza este horario escolar y extrae: días, horas, materias y salones. Presenta en formato claro y legible.';
+        } else if (currentMode === 'eco') {
+          contextMsg = 'Identifica qué elementos materiales aparecen en esta imagen y cómo se pueden reciclar correctamente. Sé práctico y claro.';
+        } else {
+          contextMsg = 'Analiza esta imagen en detalle y ayúdame. Sé claro y práctico.';
+        }
+        
+        await callEcoBot(contextMsg, base64);
       };
       reader.readAsDataURL(file);
       input.value='';
