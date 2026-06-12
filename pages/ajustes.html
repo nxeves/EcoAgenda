@@ -111,23 +111,46 @@
 
   <nav class="eco-nav">
     <div class="container">
-      <a href="inicio.html" class="nav-logo"><div class="logo-dot"></div>EcoAgenda</a>
-      <ul class="nav-links">
-        <li><a href="inicio.html"><span class="nav-icon">🏠</span>Inicio</a></li>
-        <li><a href="agenda.html"><span class="nav-icon">📝</span>Agenda</a></li>
-        <li><a href="reciclaje.html"><span class="nav-icon">♻️</span>Recicla</a></li>
-        <li><a href="chat.html"><span class="nav-icon">💬</span>Chat</a></li>
-        <li><a href="juego.html"><span class="nav-icon">🎮</span>Juego</a></li>
-        <li><a href="ranking.html"><span class="nav-icon">🏆</span>Ranking</a></li>
-        <li><a href="ecobot.html"><span class="nav-icon">🤖</span>EcoBot</a></li>
-        <li><a href="comentarios.html"><span class="nav-icon">💭</span>Comentarios</a></li>
-        <li><a href="perfil.html" class="active"><span class="nav-icon">👤</span>Perfil</a></li>
-      </ul>
-      <div class="nav-user">
-        <img id="nav-avatar" src="https://ui-avatars.com/api/?name=Eco&background=0b5022&color=86efac&bold=true" class="nav-avatar" />
+      <button class="menu-trigger" onclick="toggleSidebar()">☰</button>
+      <div class="nav-logo">EcoAgenda</div>
+      <div class="nav-actions">
+        <span style="font-size:1.2rem;">🔔</span>
+        <img id="nav-avatar" src="https://ui-avatars.com/api/?name=Eco&background=0b5022&color=86efac&bold=true" style="width:32px; height:32px; border-radius:50%;" onclick="location.href='perfil.html'" />
       </div>
     </div>
   </nav>
+
+  <!-- SIDEBAR OVERLAY -->
+  <div class="sidebar-overlay" id="sidebar-overlay" onclick="toggleSidebar()"></div>
+
+  <!-- SIDEBAR (MENU LATERAL) -->
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-header">
+      <div style="display:flex; align-items:center; gap:12px;">
+        <img id="side-avatar" src="https://ui-avatars.com/api/?name=Eco&background=0b5022&color=86efac&bold=true" style="width:50px; height:50px; border-radius:50%; border:2px solid white;" />
+        <div>
+          <div id="side-user-name" style="font-weight:800; font-size:1.1rem;">Cargando...</div>
+          <div style="font-size:0.7rem; color:#666; text-transform:uppercase; letter-spacing:1px;">• Guardián</div>
+        </div>
+      </div>
+    </div>
+    <ul class="sidebar-links">
+      <li><a href="inicio.html"><span class="nav-icon">🏠</span> Inicio</a></li>
+      <li><a href="agenda.html"><span class="nav-icon">📝</span> Agenda</a></li>
+      <li><a href="reciclaje.html"><span class="nav-icon">♻️</span> Reciclaje</a></li>
+      <li><a href="chat.html"><span class="nav-icon">💬</span> Chat</a></li>
+      <li><a href="juego.html"><span class="nav-icon">🎮</span> Juego</a></li>
+      <li><a href="ranking.html"><span class="nav-icon">🏆</span> Ranking</a></li>
+      <li><a href="ecobot.html"><span class="nav-icon">🤖</span> EcoBot</a></li>
+      <li><a href="comentarios.html"><span class="nav-icon">💭</span> Comentarios</a></li>
+      <li><a href="perfil.html"><span class="nav-icon">👤</span> Perfil</a></li>
+    </ul>
+    <div class="sidebar-footer">
+      <a href="#" onclick="logout()" style="display:flex; align-items:center; gap:12px; color:#e11d48; text-decoration:none; font-weight:700; font-size:0.9rem;">
+        <span class="nav-icon">🚪</span> Cerrar sesión
+      </a>
+    </div>
+  </aside>
 
   <div class="page-wrap main-content">
     <div class="container">
@@ -197,6 +220,16 @@
         <div class="settings-group">
           <div class="settings-group-title">Cuenta y Seguridad</div>
           
+          <div class="setting-item" id="biometric-row" style="display:none;">
+            <div class="setting-info">
+              <div class="setting-label">Autenticación Biométrica</div>
+              <div class="setting-sub">Usa tu huella o rostro para entrar</div>
+            </div>
+            <div class="setting-action">
+              <div class="toggle" id="tog-biometric" onclick="toggleBiometric(this)"></div>
+            </div>
+          </div>
+
           <div class="setting-item" onclick="copyProfileLink()">
             <div class="setting-info">
               <div class="setting-label">Compartir perfil</div>
@@ -222,22 +255,43 @@
   </div>
 
   <script type="module">
-    import { initParticles, toast, applyFontSize, applyFPS } from '../js/utils.js';
+    import { initParticles, toast, applyFontSize, applyFPS, haptic, isBiometricAvailable } from '../js/utils.js';
     import { auth } from '../js/firebase.js';
     import { onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
 
     initParticles();
 
-    onAuthStateChanged(auth, user => {
-      if (!user && !sessionStorage.getItem('eco_demo')) location.href='../index.html';
-      if (user?.photoURL) document.getElementById('nav-avatar').src = user.photoURL;
+    onAuthStateChanged(auth, async user => {
+      if (!user) {
+        if (!sessionStorage.getItem('eco_demo')) { location.href='../index.html'; return; }
+        document.getElementById('side-user-name').textContent = 'Demo User';
+      } else {
+        const name = user.displayName?.split(' ')[0] || 'EcoHéroe';
+        document.getElementById('side-user-name').textContent = name;
+        if (user.photoURL) {
+          document.getElementById('nav-avatar').src = user.photoURL;
+          document.getElementById('side-avatar').src = user.photoURL;
+        }
+      }
       loadSettings();
+      
+      // Check biometrics
+      if (await isBiometricAvailable()) {
+        document.getElementById('biometric-row').style.display = 'flex';
+      }
     });
+
+    // Toggle Sidebar
+    window.toggleSidebar = () => {
+      document.getElementById('sidebar').classList.toggle('active');
+      document.getElementById('sidebar-overlay').classList.toggle('active');
+    };
 
     function loadSettings() {
       const s = JSON.parse(localStorage.getItem('eco_settings') || '{}');
       if (s.sound === false) document.getElementById('tog-sound').classList.remove('on');
       if (s.notif === false) document.getElementById('tog-notif').classList.remove('on');
+      if (s.biometric === true) document.getElementById('tog-biometric').classList.add('on');
       
       const storedFontSize = localStorage.getItem('eco_font_size') || 17;
       document.getElementById('font-range').value = storedFontSize;
@@ -246,7 +300,32 @@
       document.getElementById('fps-limit').value = storedFPS;
     }
 
+    window.toggleBiometric = async (el) => {
+      haptic('medium');
+      if (!el.classList.contains('on')) {
+        // Simular registro de WebAuthn
+        toast('Configurando biometría...', 'info');
+        setTimeout(() => {
+          el.classList.add('on');
+          saveSetting('biometric', true);
+          toast('Biometría activada correctamente', 'success');
+          haptic('success');
+        }, 1000);
+      } else {
+        el.classList.remove('on');
+        saveSetting('biometric', false);
+        toast('Biometría desactivada', 'info');
+      }
+    };
+
+    function saveSetting(key, val) {
+      const s = JSON.parse(localStorage.getItem('eco_settings') || '{}');
+      s[key] = val;
+      localStorage.setItem('eco_settings', JSON.stringify(s));
+    }
+
     window.changeFPS = (fps) => {
+      haptic('light');
       localStorage.setItem('eco_target_fps', fps);
       applyFPS(); // Aplicar cambios visuales de FPS inmediatamente
       toast(`Rendimiento ajustado a ${fps} FPS`, 'info');
@@ -257,10 +336,9 @@
     };
 
     window.toggleSetting = (el, key) => {
+      haptic('light');
       el.classList.toggle('on');
-      const s = JSON.parse(localStorage.getItem('eco_settings') || '{}');
-      s[key] = el.classList.contains('on');
-      localStorage.setItem('eco_settings', JSON.stringify(s));
+      saveSetting(key, el.classList.contains('on'));
     };
 
     window.copyProfileLink = () => {

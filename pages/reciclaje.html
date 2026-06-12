@@ -84,23 +84,46 @@
 
   <nav class="eco-nav">
     <div class="container">
-      <a href="inicio.html" class="nav-logo"><div class="logo-dot"></div>EcoAgenda</a>
-      <ul class="nav-links">
-        <li><a href="inicio.html"><span class="nav-icon">🏠</span>Inicio</a></li>
-        <li><a href="agenda.html"><span class="nav-icon">📝</span>Agenda</a></li>
-        <li><a href="reciclaje.html" class="active"><span class="nav-icon">♻️</span>Recicla</a></li>
-        <li><a href="chat.html"><span class="nav-icon">💬</span>Chat</a></li>
-        <li><a href="juego.html"><span class="nav-icon">🎮</span>Juego</a></li>
-        <li><a href="ranking.html"><span class="nav-icon">🏆</span>Ranking</a></li>
-        <li><a href="ecobot.html"><span class="nav-icon">🤖</span>EcoBot</a></li>
-        <li><a href="comentarios.html"><span class="nav-icon">💭</span>Comentarios</a></li>
-        <li><a href="perfil.html"><span class="nav-icon">👤</span>Perfil</a></li>
-      </ul>
-      <div class="nav-user">
-        <img id="nav-avatar" src="https://ui-avatars.com/api/?name=Eco&background=0b5022&color=86efac&bold=true" class="nav-avatar" />
+      <button class="menu-trigger" onclick="toggleSidebar()">☰</button>
+      <div class="nav-logo">EcoAgenda</div>
+      <div class="nav-actions">
+        <span style="font-size:1.2rem;">🔔</span>
+        <img id="nav-avatar" src="https://ui-avatars.com/api/?name=Eco&background=0b5022&color=86efac&bold=true" style="width:32px; height:32px; border-radius:50%;" onclick="location.href='perfil.html'" />
       </div>
     </div>
   </nav>
+
+  <!-- SIDEBAR OVERLAY -->
+  <div class="sidebar-overlay" id="sidebar-overlay" onclick="toggleSidebar()"></div>
+
+  <!-- SIDEBAR (MENU LATERAL) -->
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-header">
+      <div style="display:flex; align-items:center; gap:12px;">
+        <img id="side-avatar" src="https://ui-avatars.com/api/?name=Eco&background=0b5022&color=86efac&bold=true" style="width:50px; height:50px; border-radius:50%; border:2px solid white;" />
+        <div>
+          <div id="side-user-name" style="font-weight:800; font-size:1.1rem;">Cargando...</div>
+          <div style="font-size:0.7rem; color:#666; text-transform:uppercase; letter-spacing:1px;">• Guardián</div>
+        </div>
+      </div>
+    </div>
+    <ul class="sidebar-links">
+      <li><a href="inicio.html"><span class="nav-icon">🏠</span> Inicio</a></li>
+      <li><a href="agenda.html"><span class="nav-icon">📝</span> Agenda</a></li>
+      <li><a href="reciclaje.html" class="active"><span class="nav-icon">♻️</span> Reciclaje</a></li>
+      <li><a href="chat.html"><span class="nav-icon">💬</span> Chat</a></li>
+      <li><a href="juego.html"><span class="nav-icon">🎮</span> Juego</a></li>
+      <li><a href="ranking.html"><span class="nav-icon">🏆</span> Ranking</a></li>
+      <li><a href="ecobot.html"><span class="nav-icon">🤖</span> EcoBot</a></li>
+      <li><a href="comentarios.html"><span class="nav-icon">💭</span> Comentarios</a></li>
+      <li><a href="perfil.html"><span class="nav-icon">👤</span> Perfil</a></li>
+    </ul>
+    <div class="sidebar-footer">
+      <a href="#" onclick="logout()" style="display:flex; align-items:center; gap:12px; color:#e11d48; text-decoration:none; font-weight:700; font-size:0.9rem;">
+        <span class="nav-icon">🚪</span> Cerrar sesión
+      </a>
+    </div>
+  </aside>
 
   <div class="page-wrap main-content">
     <div class="container">
@@ -190,10 +213,29 @@
 
     initParticles();
     let currentUID = null;
-    onAuthStateChanged(auth, u => { 
-      if(!u&&!sessionStorage.getItem('eco_demo')) location.href='../index.html'; 
-      if(u) currentUID = u.uid;
+    onAuthStateChanged(auth, user => {
+      if (!user) {
+        if (!sessionStorage.getItem('eco_demo')) location.href = '../index.html';
+        else {
+          document.getElementById('side-user-name').textContent = 'Demo User';
+        }
+        return;
+      }
+
+      currentUID = user.uid;
+      const name = user.displayName?.split(' ')[0] || 'EcoHéroe';
+      document.getElementById('side-user-name').textContent = name;
+      if (user.photoURL) {
+        document.getElementById('nav-avatar').src = user.photoURL;
+        document.getElementById('side-avatar').src = user.photoURL;
+      }
     });
+
+    // Toggle Sidebar
+    window.toggleSidebar = () => {
+      document.getElementById('sidebar').classList.toggle('active');
+      document.getElementById('sidebar-overlay').classList.toggle('active');
+    };
 
     const ITEMS = [
       { name:'Botella PET',    bin:'plastico', icon:'🥤', desc:'Aplasta antes de tirar. Sin tapas.' },

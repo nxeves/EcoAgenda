@@ -431,6 +431,11 @@
     };
 
     async function bootAgendaNotifications() {
+      // 1. Check AI Smart Reminders
+      if (currentUID !== 'demo') {
+        checkAISmartReminders();
+      }
+      
       if (!currentUID || currentUID === 'demo') return;
       const pushState = await initPushNotifications({
         app,
@@ -454,6 +459,32 @@
     function evalRemindersNow() {
       try { runSmartReminders(tasks); } catch(e) { console.warn('Reminder check:', e); }
       loadReminders();
+    }
+
+    // ── AI Smart Reminders ───────────────────────────
+    async function checkAISmartReminders() {
+      if (!currentUID || currentUID === 'demo') return;
+      
+      const lastCheck = localStorage.getItem(`eco_ai_check_${currentUID}`);
+      const now = Date.now();
+      
+      // Solo revisar una vez cada 6 horas para no saturar
+      if (lastCheck && now - parseInt(lastCheck) < 6 * 60 * 60 * 1000) return;
+
+      try {
+        const tasks = JSON.parse(localStorage.getItem(`eco_tasks_${currentUID}`) || '[]');
+        const pendingTasks = tasks.filter(t => !t.completed);
+        
+        if (pendingTasks.length > 0) {
+          const nextTask = pendingTasks[0];
+          toast(`🤖 EcoBot: Tienes "${nextTask.title}" pendiente. ¡Tú puedes!`, 'info');
+          haptic('medium');
+        }
+        
+        localStorage.setItem(`eco_ai_check_${currentUID}`, now.toString());
+      } catch (e) {
+        console.warn('AI Reminder error', e);
+      }
     }
 
     // ── Calendar ──────────────────────────────────────

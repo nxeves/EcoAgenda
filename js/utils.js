@@ -35,6 +35,28 @@ export function toast(msg, type = 'success', duration = 3500) {
   }, duration);
 }
 
+// ── Haptic Feedback (Vibración) ─────────
+export function haptic(type = 'light') {
+  if (!window.navigator || !window.navigator.vibrate) return;
+  
+  switch(type) {
+    case 'light':   window.navigator.vibrate(10); break;
+    case 'medium':  window.navigator.vibrate(20); break;
+    case 'heavy':   window.navigator.vibrate(50); break;
+    case 'success': window.navigator.vibrate([10, 30, 10]); break;
+    case 'error':   window.navigator.vibrate([50, 50, 50]); break;
+    case 'warning': window.navigator.vibrate([30, 50]); break;
+  }
+}
+
+// ── Biometric Auth (WebAuthn) ───────────
+export async function isBiometricAvailable() {
+  if (window.PublicKeyCredential) {
+    return await PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable();
+  }
+  return false;
+}
+
 // ── Theme system (dark / light) ─────────
 const THEME_KEY = 'eco_theme';
 const FONT_SIZE_KEY = 'eco_font_size';

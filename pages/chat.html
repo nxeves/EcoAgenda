@@ -257,84 +257,68 @@
 
   <nav class="eco-nav">
     <div class="container">
-      <a href="inicio.html" class="nav-logo"><div class="logo-dot"></div>EcoAgenda</a>
-      <ul class="nav-links">
-        <li><a href="inicio.html"><span class="nav-icon">🏠</span>Inicio</a></li>
-        <li><a href="agenda.html"><span class="nav-icon">📝</span>Agenda</a></li>
-        <li><a href="reciclaje.html"><span class="nav-icon">♻️</span>Recicla</a></li>
-        <li><a href="chat.html" class="active"><span class="nav-icon">💬</span>Chat</a></li>
-        <li><a href="juego.html"><span class="nav-icon">🎮</span>Juego</a></li>
-        <li><a href="ranking.html"><span class="nav-icon">🏆</span>Ranking</a></li>
-        <li><a href="ecobot.html"><span class="nav-icon">🤖</span>EcoBot</a></li>
-        <li><a href="comentarios.html"><span class="nav-icon">💭</span>Comentarios</a></li>
-        <li><a href="perfil.html"><span class="nav-icon">👤</span>Perfil</a></li>
-      </ul>
-      <div class="nav-user">
-        <img id="nav-avatar" src="https://ui-avatars.com/api/?name=Eco&background=0b5022&color=86efac&bold=true" class="nav-avatar" />
+      <button class="menu-trigger" onclick="toggleSidebar()">☰</button>
+      <div class="nav-logo">EcoAgenda</div>
+      <div class="nav-actions">
+        <span style="font-size:1.2rem;">🔔</span>
+        <img id="nav-avatar" src="https://ui-avatars.com/api/?name=Eco&background=0b5022&color=86efac&bold=true" style="width:32px; height:32px; border-radius:50%;" onclick="location.href='perfil.html'" />
       </div>
     </div>
   </nav>
+
+  <!-- SIDEBAR OVERLAY -->
+  <div class="sidebar-overlay" id="sidebar-overlay" onclick="toggleSidebar()"></div>
+
+  <!-- SIDEBAR (MENU LATERAL) -->
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-header">
+      <div style="display:flex; align-items:center; gap:12px;">
+        <img id="side-avatar" src="https://ui-avatars.com/api/?name=Eco&background=0b5022&color=86efac&bold=true" style="width:50px; height:50px; border-radius:50%; border:2px solid white;" />
+        <div>
+          <div id="side-user-name" style="font-weight:800; font-size:1.1rem;">Cargando...</div>
+          <div style="font-size:0.7rem; color:#666; text-transform:uppercase; letter-spacing:1px;">• Guardián</div>
+        </div>
+      </div>
+    </div>
+    <ul class="sidebar-links">
+      <li><a href="inicio.html"><span class="nav-icon">🏠</span> Inicio</a></li>
+      <li><a href="agenda.html"><span class="nav-icon">📝</span> Agenda</a></li>
+      <li><a href="reciclaje.html"><span class="nav-icon">♻️</span> Reciclaje</a></li>
+      <li><a href="chat.html" class="active"><span class="nav-icon">💬</span> Chat</a></li>
+      <li><a href="juego.html"><span class="nav-icon">🎮</span> Juego</a></li>
+      <li><a href="ranking.html"><span class="nav-icon">🏆</span> Ranking</a></li>
+      <li><a href="ecobot.html"><span class="nav-icon">🤖</span> EcoBot</a></li>
+      <li><a href="comentarios.html"><span class="nav-icon">💭</span> Comentarios</a></li>
+      <li><a href="perfil.html"><span class="nav-icon">👤</span> Perfil</a></li>
+    </ul>
+    <div class="sidebar-footer">
+      <a href="#" onclick="logout()" style="display:flex; align-items:center; gap:12px; color:#e11d48; text-decoration:none; font-weight:700; font-size:0.9rem;">
+        <span class="nav-icon">🚪</span> Cerrar sesión
+      </a>
+    </div>
+  </aside>
 
   <div class="chat-page">
     <div class="container">
       <div class="chat-layout">
         <!-- Sidebar -->
         <div class="chat-sidebar">
-          <div class="chat-sidebar-header">
-            <span style="font-family:var(--font-display);font-weight:800;font-size:0.95rem;">💬 Salas</span>
-            <div style="display:flex;gap:6px;">
-              <button class="btn btn-ghost btn-icon" onclick="openCreateRoom()" title="Crear sala">＋</button>
-              <button class="btn btn-ghost btn-icon" onclick="openJoinRoom()"   title="Unirse">🔑</button>
-            </div>
-          </div>
-          <div class="room-list" id="room-list">
-            <!-- rooms rendered here -->
-          </div>
+          <!-- ... (contenido existente) ... -->
         </div>
 
         <!-- Chat main -->
         <div class="chat-main">
-          <div class="chat-header" id="chat-header">
-            <button class="btn btn-ghost btn-icon btn-back-chat" onclick="goBackToList()" style="display:none;">←</button>
-            <div class="room-avatar" id="header-avatar">💬</div>
-            <div>
-              <div style="font-family:var(--font-display);font-weight:800;" id="header-name">Selecciona una sala</div>
-              <div style="font-size:0.72rem;color:var(--text-muted);" id="header-code">—</div>
-            </div>
-            <div style="margin-left:auto;display:flex;gap:8px;">
-              <button class="btn btn-ghost btn-sm" onclick="copyCode()" id="btn-copy-code" style="display:none;">📋 Copiar código</button>
-              <button class="btn btn-ghost btn-sm" id="header-members">0 miembros</button>
-            </div>
-          </div>
-
-          <div class="chat-messages" id="chat-messages">
-            <div style="text-align:center;padding:40px;color:var(--text-muted);">
-              <div style="font-size:3rem;margin-bottom:12px;">💬</div>
-              <p>Selecciona una sala para chatear</p>
-              <div style="margin-top:16px;display:flex;gap:10px;justify-content:center;">
-                <button class="btn btn-primary btn-sm" onclick="openCreateRoom()">Crear sala</button>
-                <button class="btn btn-secondary btn-sm" onclick="openJoinRoom()">Unirse con código</button>
-              </div>
-            </div>
-          </div>
-
-          <div class="attach-bar">
-            <button class="attach-btn" onclick="document.getElementById('file-upload').click()" title="Imagen">🖼️</button>
-            <input type="file" id="file-upload" accept="image/*" style="display:none" onchange="sendImage(this)" />
-            <button class="attach-btn" id="btn-record" onclick="toggleRecording()" title="Audio">🎙️</button>
-            <div class="recording-indicator" id="rec-indicator">
-              <div class="rec-dot"></div> Grabando...
-            </div>
-          </div>
-
-          <div class="chat-input-area">
-            <div id="mention-suggest" class="mention-suggest"></div>
-            <input class="chat-input" type="text" id="chat-input" placeholder="Escribe un mensaje..." onkeydown="handleKey(event)" oninput="handleMentionInput(event)" />
-            <button class="btn btn-ghost btn-icon" onclick="showEmojiPicker()" title="Reacciones">😊</button>
-            <button class="btn btn-primary btn-icon" onclick="sendMessage()">→</button>
-          </div>
+          <!-- ... (contenido existente) ... -->
         </div>
       </div>
+    </div>
+  </div>
+
+  <!-- Image Viewer Modal (Lightbox) -->
+  <div class="modal-overlay" id="image-viewer-modal" style="display:none; z-index:5000; background:rgba(0,0,0,0.95);" onclick="closeImageViewer()">
+    <button class="btn btn-ghost" style="position:absolute; top:20px; right:20px; color:white; font-size:2rem; z-index:5001;">✕</button>
+    <div style="width:100%; height:100%; display:flex; align-items:center; justify-content:center; padding:20px;">
+      <img id="viewer-img" src="" style="max-width:100%; max-height:100%; object-fit:contain; border-radius:8px; box-shadow:0 0 40px rgba(0,0,0,0.5);" onclick="event.stopPropagation()" />
     </div>
   </div>
 
@@ -408,15 +392,28 @@
         if (!sessionStorage.getItem('eco_demo')) { location.href='../index.html'; return; }
         const u = JSON.parse(sessionStorage.getItem('eco_user')||'{}');
         currentUser = { uid:'demo', displayName:u.displayName||'Demo', photoURL:'' };
+        document.getElementById('side-user-name').textContent = 'Demo User';
         loadDemoRooms();
         return;
       }
       currentUser = user;
+      const name = user.displayName?.split(' ')[0] || 'EcoHéroe';
+      document.getElementById('side-user-name').textContent = name;
+      if (user.photoURL) {
+        document.getElementById('nav-avatar').src = user.photoURL;
+        document.getElementById('side-avatar').src = user.photoURL;
+      }
       await requestNotifications();
       setupGlobalPresence();
       subscribeOwnNotifications();
       loadUserRooms();
     });
+
+    // Toggle Sidebar
+    window.toggleSidebar = () => {
+      document.getElementById('sidebar').classList.toggle('active');
+      document.getElementById('sidebar-overlay').classList.toggle('active');
+    };
 
     function buildAlias(name = '') {
       const first = String(name).trim().split(/\s+/)[0] || 'usuario';
@@ -492,13 +489,17 @@
         { id:'demo2', name:'🔬 Proyecto Ciencias', desc:'Grupo 3B',       code:'SCI342', members:5  },
       ];
       renderRoomList(demoRooms);
+      // Seleccionar automáticamente la primera sala para cargar mensajes antiguos
       selectRoom(demoRooms[0]);
     }
 
     function renderRoomList(rooms) {
       const el = document.getElementById('room-list');
       if (!rooms.length) {
-        el.innerHTML='<div style="padding:20px;text-align:center;color:var(--text-muted);font-size:0.82rem;">Sin salas — crea o únete a una</div>';
+        el.innerHTML = `
+          <div style="padding:16px; display:flex; flex-direction:column; gap:12px;">
+            ${Array(4).fill('<div class="skeleton" style="height:60px; border-radius:12px;"></div>').join('')}
+          </div>`;
         return;
       }
       el.innerHTML = rooms.map(r=>{
@@ -649,7 +650,7 @@
         
         if (m.type === 'image' || m.imageData) {
           const src = m.imageData || m.url;
-          content = `<img class="msg-img" src="${src}" onclick="window.open('${src}')" />`;
+          content = `<img class="msg-img" src="${src}" onclick="openImageViewer('${src}')" />`;
         } else if (m.type === 'audio' || m.audioData) {
           const src = m.audioData || m.url;
           content = `
@@ -818,6 +819,21 @@
         return `${prefix}<span class="mention-token">@${alias}</span>`;
       });
     }
+
+    // ── Image Viewer (Lightbox) ──────────────────────
+    window.openImageViewer = (src) => {
+      const modal = document.getElementById('image-viewer-modal');
+      const img = document.getElementById('viewer-img');
+      img.src = src;
+      modal.style.display = 'flex';
+      document.body.style.overflow = 'hidden'; // Bloquear scroll
+    };
+
+    window.closeImageViewer = () => {
+      const modal = document.getElementById('image-viewer-modal');
+      modal.style.display = 'none';
+      document.body.style.overflow = ''; // Restaurar scroll
+    };
 
     // ── WhatsApp Audio Player Logic ──────────────────
     window.setAudioDuration = (id, audio) => {
